@@ -52,7 +52,7 @@ The platform is built on a relational/document structure:
 
 1.  **Clone the Repository:**
     ```bash
-    git clone [https://github.com/mohdragon010/efham.git](https://github.com/mohdragon010/efham.git)
+    git clone https://github.com/mohdragon010/efham.git
  
     ```
 2.  **Client Setup (Frontend):**
@@ -74,4 +74,4 @@ The platform is built on a relational/document structure:
 
 ## 📧 Contact
 Developed by **[Mohamed Ayman]** – Let's build something great together!
-[https://mohamed-crafts.vercel.app](Visit my portfolio)
+[https://mohamed-crafts.vercel.app](Visit-my-portfolio)
