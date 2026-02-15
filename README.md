@@ -1,36 +1,81 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🎓 Efham (افهم) - Learning Management System
 
-## Getting Started
+**Efham** is a streamlined LMS platform designed to manage a single subject efficiently. It bridges the gap between teachers and students by providing a centralized hub for assignments, quizzes, and performance tracking.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🚀 Project Overview
+The goal of **Efham** is to simplify the educational workflow. Teachers can focus on delivering content and grading, while students get a clear roadmap of their tasks and progress in a distraction-free environment.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## ✨ Core Features (MVP)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 👨‍🏫 Teacher Dashboard
+* **Student Management:** Add, view, and track enrolled students.
+* **Assignment Hub:** Create assignments with descriptions and deadlines.
+* **Quiz Builder:** Design simple quizzes to test student knowledge.
+* **Gradebook:** Manually input and manage grades for all submissions.
+* **Class Overview:** A bird's-eye view of all student activities.
 
-## Learn More
+### 👨‍🎓 Student Dashboard
+* **Course Content:** Access all materials and instructions uploaded by the teacher.
+* **Assignment Submission:** Solve and upload assignments directly through the portal.
+* **Active Quizzes:** Participate in quizzes and see immediate results.
+* **Performance Tracking:** A dedicated "My Grades" section to monitor progress.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🛠️ Technical Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | Next.js, Tailwind CSS, ShadCN |
+| **Backend** | Firebase |
+| **Database** | Firestore |
+| **Authentication** | Firebase |
+| **State Management** | Zustand |
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📂 Database Architecture (Schema)
+The platform is built on a relational/document structure:
+* **Users:** Handles Authentication & Roles (Teacher/Student).
+* **Assignments:** Stores task details and deadlines.
+* **Submissions:** Links student answers to specific assignments.
+* **Quizzes & Questions:** Stores test structures and correct answers.
+* **Grades:** A unified record for all evaluation results.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🏗️ Getting Started
+
+1.  **Clone the Repository:**
+    ```bash
+    git clone [https://github.com/mohdragon010/efham.git](https://github.com/mohdragon010/efham.git)
+    ```
+2.  **Server Setup (Backend):**
+    ```bash
+    cd backend
+    npm install
+    npm start
+    ```
+3.  **Client Setup (Frontend):**
+    ```bash
+    cd frontend
+    npm install
+    npm start
+    ```
+
+---
+
+## 📈 Future Roadmap
+- [ ] **Auto-Grading:** Instant correction for MCQ-based quizzes.
+- [ ] **Analytics:** Interactive charts to visualize student performance trends.
+- [ ] **Notifications:** Real-time alerts for new assignments or graded tasks.
+- [ ] **Attendance:** A digital register for student presence.
+
+---
+
+## 📧 Contact
+Developed by **[Mohamed Ayman]** – Let's build something great together!
