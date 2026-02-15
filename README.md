@@ -53,14 +53,9 @@ The platform is built on a relational/document structure:
 1.  **Clone the Repository:**
     ```bash
     git clone [https://github.com/mohdragon010/efham.git](https://github.com/mohdragon010/efham.git)
+ 
     ```
-2.  **Server Setup (Backend):**
-    ```bash
-    cd backend
-    npm install
-    npm start
-    ```
-3.  **Client Setup (Frontend):**
+2.  **Client Setup (Frontend):**
     ```bash
     cd frontend
     npm install
