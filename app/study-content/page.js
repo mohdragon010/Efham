@@ -123,7 +123,7 @@ export default function StudyContent() {
                 <div className="space-y-4">
                     <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                         <span className="w-2 h-8 bg-orange-500 rounded-full" />
-                        اختبار الأسبوع
+                        آخر أختبار
                     </h2>
                     {loading ? (
                         <Skeleton className="h-70 w-full rounded-3xl" />

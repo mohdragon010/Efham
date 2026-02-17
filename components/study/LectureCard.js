@@ -8,7 +8,7 @@ export default function LectureCard({ lecture }) {
     if (!lecture) return null;
 
     return (
-        <Link href={`/study-content/lecture/${lecture.id}`}>
+        <Link href={`/study-content/lectures/${lecture.id}`}>
             <motion.div
                 whileHover={{ y: -5, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
