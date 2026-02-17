@@ -151,8 +151,8 @@ export default function LectureDetailsPage() {
           <BookOpen className="h-5 w-5 text-indigo-500" />
         </div>
         <div>
-          <p className="text-xs text-slate-400 font-medium mb-0.5">تفاصيل المحاضرة</p>
-          <h1 className="text-xl font-extrabold text-slate-800 leading-tight">
+          <p className="text-xs text-slate-400 font-medium mb-0.5">:تفاصيل المحاضرة</p>
+          <h1 className="text-xl font-extrabold text-[#005b9e] leading-tight">
             {lecture?.title}
           </h1>
         </div>
