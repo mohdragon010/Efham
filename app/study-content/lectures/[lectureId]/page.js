@@ -120,7 +120,7 @@ function SubLectureCard({ sub, lectureId, index }) {
         <div className="flex items-center gap-4 p-4 rounded-2xl border border-slate-100 bg-white hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-50 transition-all duration-300">
 
           {/* type icon */}
-          <div className={`flex-shrink-0 h-10 w-10 rounded-xl ${bg} border ${border} flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
+          <div className={`shrink-0 h-10 w-10 rounded-xl ${bg} border ${border} flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
             <Icon className={`h-5 w-5 ${color}`} />
           </div>
 
@@ -143,7 +143,7 @@ function SubLectureCard({ sub, lectureId, index }) {
           </div>
 
           {/* index + arrow */}
-          <div className="flex-shrink-0 flex items-center gap-2">
+          <div className="shrink-0 flex items-center gap-2">
             <span className="text-xs font-bold text-slate-300">
               {String(index + 1).padStart(2, "0")}
             </span>
@@ -195,12 +195,12 @@ export default function LectureDetailsPage() {
       {/* ── header ── */}
       <div className="flex items-start gap-3 mb-5">
         <button onClick={() => history.back()}
-          className="mt-1 h-9 w-9 flex items-center justify-center rounded-xl border border-slate-100 bg-white hover:border-indigo-200 hover:text-indigo-500 transition-all text-slate-400 flex-shrink-0"
+          className="mt-1 h-9 w-9 flex items-center justify-center rounded-xl border border-slate-100 bg-white hover:border-indigo-200 hover:text-indigo-500 transition-all text-slate-400 shrink-0"
         >
           <ArrowRight className="h-4 w-4" />
         </button>
 
-        <div className="flex items-center justify-center h-11 w-11 rounded-xl bg-indigo-50 border border-indigo-100 flex-shrink-0 mt-0.5">
+        <div className="flex items-center justify-center h-11 w-11 rounded-xl bg-indigo-50 border border-indigo-100 shrink-0 mt-0.5">
           <BookOpen className="h-5 w-5 text-indigo-500" />
         </div>
 
@@ -223,7 +223,7 @@ export default function LectureDetailsPage() {
         </div>
 
         {lecture?.order != null && (
-          <span className="flex-shrink-0 text-xs font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg mt-1">
+          <span className="shrink-0 text-xs font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg mt-1">
             #{lecture.order}
           </span>
         )}
@@ -249,7 +249,7 @@ export default function LectureDetailsPage() {
       {/* ── sub-lectures ── */}
       <div className="flex items-center gap-2 mb-4">
         <Layers className="h-4 w-4 text-slate-400" />
-        <h2 className="text-sm font-bold text-slate-700">الدروس الفرعية</h2>
+        <h2 className="text-sm font-bold text-slate-700">الدروس:</h2>
         <span className="mr-auto text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
           {subLectures.length}
         </span>

@@ -205,7 +205,7 @@ export default function SubLecturePage() {
       const docSnap = await getDoc(doc(db, "lectures", lectureId));
       if (!docSnap.exists()) { setStatus("not-found"); return; }
 
-      const found = (docSnap.data().subLectures ?? []).find((s) => s.id === subLectureId);
+      const found = (docSnap.data().subLectures ?? []).find(s => s.id === subLectureId);
       if (!found) { setStatus("not-found"); return; }
 
       setSubLecture(found);
@@ -234,11 +234,11 @@ export default function SubLecturePage() {
       {/* header */}
       <div className="flex items-center gap-3 mb-2">
         <button onClick={() => history.back()}
-          className="h-9 w-9 flex items-center justify-center rounded-xl border border-slate-100 bg-white hover:border-indigo-200 hover:text-indigo-500 transition-all text-slate-400 flex-shrink-0"
+          className="h-9 w-9 flex items-center justify-center rounded-xl border border-slate-100 bg-white hover:border-indigo-200 hover:text-indigo-500 transition-all text-slate-400 shrink-0"
         >
           <ArrowRight className="h-4 w-4" />
         </button>
-        <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-indigo-50 border border-indigo-100 flex-shrink-0">
+        <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-indigo-50 border border-indigo-100 shrink-0">
           <BookOpen className="h-4 w-4 text-indigo-500" />
         </div>
         <div className="min-w-0">
@@ -253,7 +253,7 @@ export default function SubLecturePage() {
           if (!meta) return null;
           const { Icon, label, color, bg, border } = meta;
           return (
-            <span className={`mr-auto flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${bg} ${border} border ${color}`}>
+            <span className={`mr-auto shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${bg} ${border} border ${color}`}>
               <Icon className="h-3.5 w-3.5" />
               {label}
             </span>
