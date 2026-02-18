@@ -53,7 +53,7 @@ export default function AssignmentCard({ assignment }) {
                             </div>
 
                             <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 rounded-xl gap-2 py-6">
-                                <Link href={`/assignment/${assignment.id}`}>
+                                <Link href={`/study-content/assignments/${assignment.id}`}>
                                     فتح الواجب
                                     <ArrowLeft className="w-4 h-4" />
                                 </Link>
