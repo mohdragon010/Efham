@@ -120,21 +120,20 @@ export default function GradesPage() {
 
     return (
         <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-12 text-right mb-20" dir="rtl">
-            {/* Header Section */}
-            <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-                <div>
+            <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div className="space-y-1">
                     <motion.h1
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        className="text-4xl font-black text-slate-900"
+                        className="text-3xl md:text-4xl font-black text-slate-900"
                     >
                         سجل الدرجات 🏆
                     </motion.h1>
-                    <p className="text-slate-500 font-bold mt-2">مرآة أداؤك الأكاديمي وتطورك في المنصة</p>
+                    <p className="text-slate-500 font-bold text-sm md:text-base">مرآة أداؤك الأكاديمي وتطورك في المنصة</p>
                 </div>
 
-                <div className="flex gap-3">
-                    <div className="bg-primary/5 text-primary px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-2 font-black text-sm">
+                <div className="flex gap-3 self-end md:self-auto">
+                    <div className="bg-primary/5 text-primary px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-2 font-black text-xs md:text-sm shadow-sm">
                         <TrendingUp className="w-4 h-4" />
                         مستوى تصاعدي
                     </div>
@@ -172,10 +171,9 @@ export default function GradesPage() {
                 />
             </section>
 
-            {/* Detailed History Table */}
             <section className="bg-white rounded-[2.5rem] border-2 border-slate-100 shadow-xl shadow-slate-200/40 overflow-hidden">
-                <div className="p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="flex bg-slate-100 p-1.5 rounded-2xl w-full md:w-auto">
+                <div className="p-4 md:p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="flex bg-slate-100 p-1 rounded-2xl w-full md:w-auto overflow-x-auto no-scrollbar">
                         <TabButton
                             active={activeTab === "quizzes"}
                             onClick={() => setActiveTab("quizzes")}
@@ -264,17 +262,16 @@ export default function GradesPage() {
                 </div>
             </section>
 
-            {/* Progress Chart Simulation */}
-            <section className="bg-white rounded-[2.5rem] p-10 border-2 border-slate-100 shadow-xl shadow-slate-200/40">
-                <div className="flex justify-between items-center mb-10">
-                    <Button variant="outline" className="rounded-2xl font-black gap-2">
-                        آخر 10 نشاطات
-                        <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <div className="text-right">
+            <section className="bg-white rounded-[2.5rem] p-6 md:p-10 border-2 border-slate-100 shadow-xl shadow-slate-200/40">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 md:mb-10">
+                    <div className="text-right order-2 md:order-1">
                         <h2 className="text-2xl font-black text-slate-800">منحنى التطور</h2>
                         <p className="text-slate-400 font-bold text-sm">تتبع تقدمك في آخر النشاطات</p>
                     </div>
+                    <Button variant="outline" className="rounded-2xl font-black gap-2 order-1 md:order-2 self-end md:self-auto">
+                        آخر 10 نشاطات
+                        <ChevronLeft className="w-4 h-4 ml-1" />
+                    </Button>
                 </div>
 
                 <div className="h-64 flex items-end justify-between gap-4 px-4 pt-4 border-b-2 border-slate-100 relative">

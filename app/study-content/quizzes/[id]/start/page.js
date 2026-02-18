@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect, use } from "react";
-import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, setDoc, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import useAuth from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
@@ -26,41 +26,136 @@ export default function StartQuizPage({ params }) {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [showModal, setShowModal] = useState(false);
+    const [isTimeUp, setIsTimeUp] = useState(false);
+    const [timeLeft, setTimeLeft] = useState(0);
+    const [resultId, setResultId] = useState(null);
 
     useEffect(() => {
         const fetchQuiz = async () => {
             if (!id || !user) return;
 
-            // Check if already submitted (Security)
-            const qSub = query(
+            // 1. Check if already submitted
+            const qResRef = query(
                 collection(db, "quizzesResult"),
                 where("quizId", "==", id),
                 where("userId", "==", user.uid)
             );
-            const subSnap = await getDocs(qSub);
+            const subSnap = await getDocs(qResRef);
             if (!subSnap.empty) {
                 router.push(`/study-content/quizzes/${id}`);
                 return;
             }
 
+            // 2. Fetch Quiz Data
             const qSnap = await getDoc(doc(db, "quizzes", id));
-            if (qSnap.exists()) {
-                setQuiz({ id: qSnap.id, ...qSnap.data() });
+            if (!qSnap.exists()) {
+                router.push("/study-content/quizzes");
+                return;
             }
+            const quizData = { id: qSnap.id, ...qSnap.data() };
+            setQuiz(quizData);
+
+            // 3. Check for Active Session
+            const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
+            const sessionSnap = await getDoc(sessionRef);
+
+            if (sessionSnap.exists()) {
+                const sessionData = sessionSnap.data();
+                const startTime = sessionData.startTime.toDate().getTime();
+                const now = Date.now();
+                const elapsedSeconds = Math.floor((now - startTime) / 1000);
+                const totalAllowed = quizData.duration * 60;
+
+                if (elapsedSeconds >= totalAllowed) {
+                    // Time expired while away
+                    setAnswers(sessionData.answers || {});
+                    setIsTimeUp(true);
+                    setLoading(false);
+                    // We'll trigger auto-submit in the next effect
+                    setTimeLeft(0);
+                    return;
+                } else {
+                    // Resume session
+                    setTimeLeft(totalAllowed - elapsedSeconds);
+                    setAnswers(sessionData.answers || {});
+                }
+            } else {
+                // Start new session
+                const startTime = new Date();
+                await setDoc(sessionRef, {
+                    userId: user.uid,
+                    quizId: id,
+                    startTime: startTime,
+                    answers: {},
+                    lastSync: serverTimestamp()
+                });
+                setTimeLeft(quizData.duration * 60);
+            }
+
             setLoading(false);
         };
         fetchQuiz();
     }, [id, user]);
 
-    const handleOptionSelect = (questionId, option) => {
-        setAnswers(prev => ({ ...prev, [questionId]: option }));
+    // Timer Logic
+    useEffect(() => {
+        if (loading || isTimeUp || !quiz) return;
+
+        if (timeLeft <= 0) {
+            handleAutoSubmit();
+            return;
+        }
+
+        const timer = setInterval(() => {
+            setTimeLeft((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [timeLeft, quiz, submitting, isTimeUp, loading]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleSubmit = async () => {
+    const handleAutoSubmit = async () => {
+        if (submitting || resultId) return;
+        setIsTimeUp(true);
+        await handleSubmit(true);
+    };
+
+    const handleOptionSelect = async (questionId, option) => {
+        if (isTimeUp || submitting) return;
+
+        const newAnswers = { ...answers, [questionId]: option };
+        setAnswers(newAnswers);
+
+        // Sync to DB
+        try {
+            const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
+            await setDoc(sessionRef, {
+                answers: newAnswers,
+                lastSync: serverTimestamp()
+            }, { merge: true });
+        } catch (err) {
+            console.error("Sync error:", err);
+        }
+    };
+
+    const handleSubmit = async (isAuto = false) => {
+        if (submitting) return;
+
         const totalQuestions = quiz.questions.length;
         const answeredCount = Object.keys(answers).length;
 
-        if (answeredCount < totalQuestions) {
+        if (!isAuto && answeredCount < totalQuestions) {
             setShowModal(true);
             return;
         }
@@ -74,7 +169,7 @@ export default function StartQuizPage({ params }) {
                 if (isCorrect) score += q.points;
                 return {
                     questionId: q.id,
-                    selected,
+                    selected: selected || "لم يتم الحل",
                     isCorrect,
                     points: q.points
                 };
@@ -91,11 +186,18 @@ export default function StartQuizPage({ params }) {
                 submittedAt: serverTimestamp()
             });
 
-            router.push(`/study-content/quizzes/${id}/${docRef.id}/result`);
+            // Cleanup session
+            const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
+            await deleteDoc(sessionRef);
+
+            if (isAuto) {
+                setResultId(docRef.id);
+            } else {
+                router.push(`/study-content/quizzes/${id}/${docRef.id}/result`);
+            }
         } catch (err) {
             console.error(err);
-            alert("حدث خطأ أثناء حفظ الإجابات");
-        } finally {
+            if (!isAuto) alert("حدث خطأ أثناء حفظ الإجابات");
             setSubmitting(false);
         }
     };
@@ -111,7 +213,47 @@ export default function StartQuizPage({ params }) {
 
     return (
         <div className="p-6 md:p-10 max-w-4xl mx-auto text-right mb-24" dir="rtl">
-            {/* Custom Modal */}
+            {/* Time Up Modal */}
+            <AnimatePresence>
+                {isTimeUp && (
+                    <div className="fixed inset-0 z-110 flex items-center justify-center p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            className="bg-white rounded-[2.5rem] p-8 md:p-12 max-w-md w-full shadow-2xl relative z-10 text-center"
+                        >
+                            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500">
+                                <TimerIcon className="w-10 h-10 animate-pulse" />
+                            </div>
+                            <h2 className="text-2xl font-black text-slate-900 mb-4 tracking-tight text-right" dir="rtl">انتهى الوقت!</h2>
+                            <p className="text-slate-500 font-bold mb-8 leading-relaxed text-right" dir="rtl">
+                                لقد انتهى الوقت المخصص للاختبار. تم حفظ تسليمك وتصحيحه تلقائياً لضمان حقك. عرض نتيجتك الآن لمعرفة مستواك.
+                            </p>
+
+                            {!resultId ? (
+                                <div className="flex flex-col items-center gap-4">
+                                    <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                                    <p className="text-orange-500 font-bold">جاري حفظ وإرسال الإجابات...</p>
+                                </div>
+                            ) : (
+                                <Button
+                                    onClick={() => router.push(`/study-content/quizzes/${id}/${resultId}/result`)}
+                                    className="w-full py-7 text-lg font-black rounded-2xl bg-orange-500 hover:bg-orange-600 shadow-lg shadow-orange-200 transition-all font-outfit"
+                                >
+                                    انتقل لعرض النتيجة
+                                </Button>
+                            )}
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Incomplete Modal */}
             <AnimatePresence>
                 {showModal && (
                     <div className="fixed inset-0 z-100 flex items-center justify-center p-6">
@@ -150,9 +292,12 @@ export default function StartQuizPage({ params }) {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 sticky top-20 bg-slate-50/80 backdrop-blur-md z-30 py-4 border-b border-slate-200/50">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900">{quiz.title}</h1>
-                    <p className="text-orange-600 font-bold flex items-center gap-2 mt-1">
-                        <TimerIcon className="w-4 h-4" />
-                        الوقت المتاح: {quiz.duration} دقيقة
+                    <p className={cn(
+                        "font-black flex items-center gap-2 mt-1 transition-colors",
+                        timeLeft < 60 ? "text-red-500 animate-pulse" : "text-orange-600"
+                    )}>
+                        <TimerIcon className="w-5 h-5" />
+                        الوقت المتبقي: {formatTime(timeLeft)}
                     </p>
                 </div>
                 <div className="bg-white px-6 py-3 rounded-2xl border-2 border-slate-100 shadow-sm flex items-center gap-4">

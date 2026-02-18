@@ -7,11 +7,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     CheckCircle2,
     AlertCircle,
-    ChevronLeft,
-    ChevronRight,
     Send,
     HelpCircle,
-    Timer
+    Timer,
+    Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,7 +34,16 @@ export default function StartAssignmentPage({ params }) {
             if (!id) return;
             const asmSnap = await getDoc(doc(db, "assignments", id));
             if (asmSnap.exists()) {
-                setAssignment({ id: asmSnap.id, ...asmSnap.data() });
+                const data = { id: asmSnap.id, ...asmSnap.data() };
+
+                // Deadline Security Check
+                const deadline = data.deadline?.toDate ? data.deadline.toDate() : new Date(data.deadline);
+                if (deadline < new Date()) {
+                    router.push(`/study-content/assignments/${id}`);
+                    return;
+                }
+
+                setAssignment(data);
             }
             setLoading(false);
         };

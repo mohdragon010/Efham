@@ -13,13 +13,15 @@ import {
     HelpCircle,
     Calendar,
     CheckCircle2,
-    Clock
+    Clock,
+    AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export default function AssignmentDetailPage({ params }) {
     const { id } = use(params);
@@ -102,7 +104,7 @@ export default function AssignmentDetailPage({ params }) {
                         العودة للواجبات
                     </Link>
                 </Button>
-                <h1 className="text-4xl font-black text-slate-900 tracking-tight">{assignment.title}</h1>
+                <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">{assignment.title}</h1>
             </motion.div>
 
             <div className="max-w-3xl mx-auto space-y-12">
@@ -141,15 +143,44 @@ export default function AssignmentDetailPage({ params }) {
                                 </div>
                             </div>
 
-                            <div className="flex justify-center pt-4">
-                                <Button
-                                    onClick={() => router.push(`/study-content/assignments/${assignment.id}/start`)}
-                                    className="px-10 py-8 text-xl font-black rounded-2xl bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100 transition-all flex gap-3 hover:scale-105"
-                                >
-                                    <PlayCircle className="w-6 h-6" />
-                                    {hasSubmissions ? "إعادة محاولة الواجب" : "ابدأ الواجب الآن"}
-                                </Button>
-                            </div>
+                            {(() => {
+                                const isPastDeadline = assignment.deadline && (assignment.deadline.toDate ? assignment.deadline.toDate() : new Date(assignment.deadline)) < new Date();
+
+                                return (
+                                    <>
+                                        {isPastDeadline && (
+                                            <div className="bg-red-50 border-2 border-red-100 p-4 rounded-2xl flex items-center gap-3 text-red-600 font-bold mb-6">
+                                                <AlertCircle className="w-5 h-5" />
+                                                <span>عذراً، لقد انتهى الموعد النهائي لتسليم هذا الواجب.</span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-center pt-4">
+                                            <Button
+                                                disabled={isPastDeadline}
+                                                onClick={() => router.push(`/study-content/assignments/${assignment.id}/start`)}
+                                                className={cn(
+                                                    "px-10 py-8 text-xl font-black rounded-2xl shadow-xl transition-all flex gap-3",
+                                                    isPastDeadline
+                                                        ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                                                        : "bg-blue-600 hover:bg-blue-700 shadow-blue-100 hover:scale-105"
+                                                )}
+                                            >
+                                                {isPastDeadline ? (
+                                                    <>
+                                                        <Clock className="w-6 h-6" />
+                                                        انتهى الموعد النهائي
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <PlayCircle className="w-6 h-6" />
+                                                        {hasSubmissions ? "إعادة محاولة الواجب" : "ابدأ الواجب الآن"}
+                                                    </>
+                                                )}
+                                            </Button>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </CardContent>
                     </Card>
 
