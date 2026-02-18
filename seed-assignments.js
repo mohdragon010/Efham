@@ -16,7 +16,7 @@ const db = getFirestore(app);
 
 const seedAssignments = async () => {
     try {
-        console.log("🚀 Starting Enhanced Assignment Seeding with Explanations...");
+        console.log("🚀 Starting Extended Assignment Seeding...");
 
         // 1. Delete all existing assignments
         const assignmentsSnapshot = await getDocs(collection(db, "assignments"));
@@ -25,80 +25,29 @@ const seedAssignments = async () => {
             await deleteDoc(doc(db, "assignments", d.id));
         }
 
-        const assignmentsData = [
-            {
-                title: "واجب أساسيات HTML المطور",
-                description: "قم بحل الأسئلة التالية لاختبار فهمك لهيكل صفحات الويب بعمق.",
-                totalPoints: 15,
-                isActive: true,
-                deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-                questions: [
-                    {
-                        id: "q1",
-                        text: "ماذا يرمز اختصار HTML؟",
-                        type: "mcq",
-                        options: ["Hyper Text Markup Language", "High Text Machine Language", "Hyper Tabular Machine Language"],
-                        correct: "Hyper Text Markup Language",
-                        points: 5,
-                        explanation: "HTML هي اللغة القياسية لإنشاء صفحات الويب، وترمز الكلمات إلى لغة توصيف النص الفائق."
-                    },
-                    {
-                        id: "q2",
-                        text: "أي عنصر يستخدم لأكبر عنوان؟",
-                        type: "mcq",
-                        options: ["<h6>", "<h1>", "<head>"],
-                        correct: "<h1>",
-                        points: 5,
-                        explanation: "العناصر من h1 إلى h6 تستخدم للعناوين، حيث يمثل h1 العنوان الأهم والأكبر حجماً."
-                    },
-                    {
-                        id: "q3",
-                        text: "هل عنصر <br> يحتاج لوسم إغلاق؟",
-                        type: "true_false",
-                        options: ["نعم", "لا"],
-                        correct: "لا",
-                        points: 5,
-                        explanation: "عنصر <br> هو عنصر فارغ (Empty Element)، مما يعني أنه لا يحتوي على محتوى وبالتالي لا يحتاج لوسم إغلاق."
-                    }
-                ]
-            },
-            {
-                title: "محترف CSS Flexbox",
-                description: "تعمق في التخطيطات المرنة وكيفية التحكم في تموضع العناصر.",
-                totalPoints: 20,
-                isActive: true,
-                deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-                questions: [
-                    {
-                        id: "q1",
-                        text: "ما هي الخاصية التي تحدد اتجاه العناصر في Flexbox؟",
-                        type: "mcq",
-                        options: ["flex-direction", "justify-content", "align-items"],
-                        correct: "flex-direction",
-                        points: 10,
-                        explanation: "تسمح لك خاصية flex-direction بتحديد ما إذا كانت العناصر ستترتب أفقياً (row) أو رأسياً (column)."
-                    },
-                    {
-                        id: "q2",
-                        text: "هل justify-content تعمل على المحور الرئيسي؟",
-                        type: "true_false",
-                        options: ["نعم", "لا"],
-                        correct: "نعم",
-                        points: 10,
-                        explanation: "بشكل افتراضي، تقوم justify-content بتوزيع المساحة بين العناصر على طول المحور الرئيسي (الذي يحدده flex-direction)."
-                    }
-                ]
-            }
+        const topics = [
+            "أساسيات HTML المنطقية", "تنسيقات CSS المتقدمة", "تخطيطات Flexbox و Grid",
+            "أساسيات JavaScript", "التحكم في الـ DOM", "مقدمة في React",
+            "مكونات UI الحديثة", "إدارة الحالة في التطبيقات", "التعامل مع APIs", "أساسيات قواعد البيانات"
         ];
 
-        for (const asm of assignmentsData) {
-            await addDoc(collection(db, "assignments"), {
-                ...asm,
+        for (let i = 0; i < 10; i++) {
+            const asm = {
+                title: `واجب: ${topics[i]}`,
+                description: `هذا الواجب يغطي المفاهيم الأساسية والمتقدمة في ${topics[i]}. يرجى الحل بدقة.`,
+                totalPoints: 20,
+                isActive: true,
+                deadline: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000),
+                questions: [
+                    { id: "q1", text: "سؤال نظري حول المفهوم الأول؟", type: "mcq", options: ["خيار أ", "خيار ب", "خيار ج"], correct: "خيار أ", points: 10, explanation: "توضيح تعليمي لهذا السؤال." },
+                    { id: "q2", text: "سؤال عملي حول التطبيق؟", type: "mcq", options: ["خيار 1", "خيار 2", "خيار 3"], correct: "خيار 1", points: 10, explanation: "توضيح تعليمي لهذا السؤال." }
+                ],
                 createdAt: serverTimestamp()
-            });
+            };
+            await addDoc(collection(db, "assignments"), asm);
         }
 
-        console.log("✅ New Assignments with explanations seeded successfully!");
+        console.log("✅ 10 Assignments seeded successfully!");
         process.exit(0);
     } catch (error) {
         console.error("❌ Error Seed: ", error);

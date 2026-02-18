@@ -41,9 +41,9 @@ export default function QuizCard({ quiz }) {
                                 المدة: {quiz.duration} دقيقة
                             </div>
                             <Button asChild className="bg-orange-500 hover:bg-orange-600 rounded-xl gap-2 px-6">
-                                <Link href={`/quiz/${quiz.id}`}>
+                                <Link href={`/study-content/quizzes/${quiz.id}`}>
                                     ابدأ الآن
-                                    <ArrowLeft className="w-4 h-4" />
+                                    <ArrowLeft className="w-4 h-4 ml-2" />
                                 </Link>
                             </Button>
                         </div>
