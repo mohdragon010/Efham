@@ -30,76 +30,141 @@ export default function StartQuizPage({ params }) {
     const [timeLeft, setTimeLeft] = useState(0);
     const [resultId, setResultId] = useState(null);
 
+    const handleSubmit = async (isAuto = false, passedAnswers = null) => {
+        if (submitting || resultId) return;
+
+        const currentAnswers = passedAnswers || answers;
+        if (!quiz) return;
+
+        const totalQuestions = quiz.questions?.length || 0;
+        const answeredCount = Object.keys(currentAnswers).length;
+
+        if (!isAuto && answeredCount < totalQuestions) {
+            setShowModal(true);
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            let score = 0;
+            const processedAnswers = quiz.questions.map(q => {
+                const selected = currentAnswers[q.id];
+                const isCorrect = selected === q.correct;
+                if (isCorrect) score += q.points;
+                return {
+                    questionId: q.id,
+                    selected: selected || "لم يتم الحل",
+                    isCorrect,
+                    points: q.points
+                };
+            });
+
+            // 1. Save Result First
+            const docRef = await addDoc(collection(db, "quizzesResult"), {
+                quizId: id,
+                userId: user.uid,
+                userName: userData?.name || "طالب",
+                score,
+                totalPoints: quiz.totalPoints,
+                answers: processedAnswers,
+                wrongQuestionIds: processedAnswers.filter(a => !a.isCorrect).map(a => a.questionId),
+                submittedAt: serverTimestamp()
+            });
+
+            // 2. Clear Session
+            const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
+            await deleteDoc(sessionRef).catch(e => console.error("Session cleanup error:", e));
+
+            // 3. Handle Navigation or Modal
+            if (isAuto) {
+                setResultId(docRef.id);
+            } else {
+                router.push(`/study-content/quizzes/${id}/${docRef.id}/result`);
+            }
+        } catch (err) {
+            console.error("Submission error:", err);
+            if (!isAuto) alert("حدث خطأ أثناء حفظ الإجابات. يرجى التحقق من اتصالك بالإنترنت.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     useEffect(() => {
         const fetchQuiz = async () => {
             if (!id || !user) return;
 
-            // 1. Check if already submitted
-            const qResRef = query(
-                collection(db, "quizzesResult"),
-                where("quizId", "==", id),
-                where("userId", "==", user.uid)
-            );
-            const subSnap = await getDocs(qResRef);
-            if (!subSnap.empty) {
-                router.push(`/study-content/quizzes/${id}`);
-                return;
-            }
-
-            // 2. Fetch Quiz Data
-            const qSnap = await getDoc(doc(db, "quizzes", id));
-            if (!qSnap.exists()) {
-                router.push("/study-content/quizzes");
-                return;
-            }
-            const quizData = { id: qSnap.id, ...qSnap.data() };
-            setQuiz(quizData);
-
-            // 3. Check for Active Session
-            const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
-            const sessionSnap = await getDoc(sessionRef);
-
-            if (sessionSnap.exists()) {
-                const sessionData = sessionSnap.data();
-                const startTime = sessionData.startTime.toDate().getTime();
-                const now = Date.now();
-                const elapsedSeconds = Math.floor((now - startTime) / 1000);
-                const totalAllowed = quizData.duration * 60;
-
-                if (elapsedSeconds >= totalAllowed) {
-                    // Time expired while away
-                    setAnswers(sessionData.answers || {});
-                    setIsTimeUp(true);
-                    setLoading(false);
-                    // We'll trigger auto-submit in the next effect
-                    setTimeLeft(0);
+            try {
+                // 1. Check if already submitted
+                const qResRef = query(
+                    collection(db, "quizzesResult"),
+                    where("quizId", "==", id),
+                    where("userId", "==", user.uid)
+                );
+                const subSnap = await getDocs(qResRef);
+                if (!subSnap.empty) {
+                    router.push(`/study-content/quizzes/${id}`);
                     return;
-                } else {
-                    // Resume session
-                    setTimeLeft(totalAllowed - elapsedSeconds);
-                    setAnswers(sessionData.answers || {});
                 }
-            } else {
-                // Start new session
-                const startTime = new Date();
-                await setDoc(sessionRef, {
-                    userId: user.uid,
-                    quizId: id,
-                    startTime: startTime,
-                    answers: {},
-                    lastSync: serverTimestamp()
-                });
-                setTimeLeft(quizData.duration * 60);
-            }
 
-            setLoading(false);
+                // 2. Fetch Quiz Data
+                const qSnap = await getDoc(doc(db, "quizzes", id));
+                if (!qSnap.exists()) {
+                    router.push("/study-content/quizzes");
+                    return;
+                }
+                const quizData = { id: qSnap.id, ...qSnap.data() };
+                setQuiz(quizData);
+
+                // 3. Check for Active Session
+                const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
+                const sessionSnap = await getDoc(sessionRef);
+
+                if (sessionSnap.exists()) {
+                    const sessionData = sessionSnap.data();
+                    const startTime = sessionData.startTime.toDate().getTime();
+                    const now = Date.now();
+                    const elapsedSeconds = Math.floor((now - startTime) / 1000);
+                    const totalAllowed = quizData.duration * 60;
+
+                    if (elapsedSeconds >= totalAllowed) {
+                        // Time expired while away
+                        const prevAnswers = sessionData.answers || {};
+                        setAnswers(prevAnswers);
+                        setIsTimeUp(true);
+                        setLoading(false);
+                        setTimeLeft(0);
+                        // Trigger submission immediately
+                        await handleSubmit(true, prevAnswers);
+                        return;
+                    } else {
+                        // Resume session
+                        setTimeLeft(totalAllowed - elapsedSeconds);
+                        setAnswers(sessionData.answers || {});
+                    }
+                } else {
+                    // Start new session
+                    const startTime = new Date();
+                    await setDoc(sessionRef, {
+                        userId: user.uid,
+                        quizId: id,
+                        startTime: startTime,
+                        answers: {},
+                        lastSync: serverTimestamp()
+                    });
+                    setTimeLeft(quizData.duration * 60);
+                }
+            } catch (err) {
+                console.error("fetchQuiz error:", err);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchQuiz();
     }, [id, user]);
 
     // Timer Logic
     useEffect(() => {
-        if (loading || isTimeUp || !quiz) return;
+        if (loading || isTimeUp || !quiz || resultId) return;
 
         if (timeLeft <= 0) {
             handleAutoSubmit();
@@ -117,7 +182,7 @@ export default function StartQuizPage({ params }) {
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [timeLeft, quiz, submitting, isTimeUp, loading]);
+    }, [timeLeft, quiz, submitting, isTimeUp, loading, resultId]);
 
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -146,59 +211,6 @@ export default function StartQuizPage({ params }) {
             }, { merge: true });
         } catch (err) {
             console.error("Sync error:", err);
-        }
-    };
-
-    const handleSubmit = async (isAuto = false) => {
-        if (submitting) return;
-
-        const totalQuestions = quiz.questions.length;
-        const answeredCount = Object.keys(answers).length;
-
-        if (!isAuto && answeredCount < totalQuestions) {
-            setShowModal(true);
-            return;
-        }
-
-        setSubmitting(true);
-        try {
-            let score = 0;
-            const processedAnswers = quiz.questions.map(q => {
-                const selected = answers[q.id];
-                const isCorrect = selected === q.correct;
-                if (isCorrect) score += q.points;
-                return {
-                    questionId: q.id,
-                    selected: selected || "لم يتم الحل",
-                    isCorrect,
-                    points: q.points
-                };
-            });
-
-            const docRef = await addDoc(collection(db, "quizzesResult"), {
-                quizId: id,
-                userId: user.uid,
-                userName: userData?.name || "طالب",
-                score,
-                totalPoints: quiz.totalPoints,
-                answers: processedAnswers,
-                wrongQuestionIds: processedAnswers.filter(a => !a.isCorrect).map(a => a.questionId),
-                submittedAt: serverTimestamp()
-            });
-
-            // Cleanup session
-            const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
-            await deleteDoc(sessionRef);
-
-            if (isAuto) {
-                setResultId(docRef.id);
-            } else {
-                router.push(`/study-content/quizzes/${id}/${docRef.id}/result`);
-            }
-        } catch (err) {
-            console.error(err);
-            if (!isAuto) alert("حدث خطأ أثناء حفظ الإجابات");
-            setSubmitting(false);
         }
     };
 
@@ -371,7 +383,7 @@ export default function StartQuizPage({ params }) {
                 <Button
                     size="lg"
                     disabled={submitting}
-                    onClick={handleSubmit}
+                    onClick={() => handleSubmit()}
                     className="w-full max-w-md py-8 text-2xl font-black rounded-3xl bg-orange-500 hover:bg-orange-600 shadow-2xl shadow-orange-500/30 hover:scale-[1.02] active:scale-95 transition-all flex gap-3"
                 >
                     {submitting ? (
