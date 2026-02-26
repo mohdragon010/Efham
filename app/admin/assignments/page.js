@@ -39,7 +39,7 @@ function AssignmentModal({ assignment, onClose, onSaved }) {
     const addQuestion = () => {
         setForm(f => ({
             ...f,
-            questions: [...f.questions, { text: "", points: 10, options: ["", "", "", ""], correct: "" }]
+            questions: [...f.questions, { text: "", points: 10, options: ["", "", "", ""], correctIndex: 0, correct: "" }]
         }));
     };
 
@@ -54,8 +54,11 @@ function AssignmentModal({ assignment, onClose, onSaved }) {
     const updateOption = (qIdx, optIdx, val) => {
         const q = { ...form.questions[qIdx] };
         const opts = [...q.options];
+        const oldVal = opts[optIdx];
         opts[optIdx] = val;
         q.options = opts;
+        // If this was the correct one, update the correct string
+        if (q.correct === oldVal) q.correct = val;
         updateQuestion(qIdx, q);
     };
 
@@ -68,9 +71,20 @@ function AssignmentModal({ assignment, onClose, onSaved }) {
     const removeOption = (qIdx, optIdx) => {
         const q = { ...form.questions[qIdx] };
         if (q.options.length <= 2) return alert("يجب أن يحتوي السؤال على خيارين على الأقل");
-        const optToRemove = q.options[optIdx];
-        q.options = q.options.filter((_, idx) => idx !== optIdx);
-        if (q.correct === optToRemove) q.correct = "";
+
+        const newOptions = q.options.filter((_, idx) => idx !== optIdx);
+        let newCorrectIndex = q.correctIndex;
+
+        if (q.correctIndex === optIdx) {
+            newCorrectIndex = 0;
+        } else if (q.correctIndex > optIdx) {
+            newCorrectIndex = q.correctIndex - 1;
+        }
+
+        q.options = newOptions;
+        q.correctIndex = newCorrectIndex;
+        q.correct = newOptions[newCorrectIndex] || "";
+
         updateQuestion(qIdx, q);
     };
 
@@ -222,10 +236,10 @@ function AssignmentModal({ assignment, onClose, onSaved }) {
                                                             )}
                                                         />
                                                         <button
-                                                            onClick={() => updateQuestion(i, { ...q, correct: opt })}
+                                                            onClick={() => updateQuestion(i, { ...q, correctIndex: optIdx, correct: opt })}
                                                             className={cn(
                                                                 "absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center transition-all",
-                                                                q.correct === opt && opt !== ""
+                                                                q.correctIndex === optIdx
                                                                     ? "bg-emerald-500 text-white shadow-lg shadow-emerald-200"
                                                                     : "bg-white text-slate-300 border border-slate-100 hover:border-emerald-200 hover:text-emerald-500 shadow-sm"
                                                             )}

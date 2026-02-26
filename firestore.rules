@@ -3,110 +3,104 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helper functions ─────────────────────────────────────────────────────
+    // ── CORE SECURITY FUNCTIONS ───────────────────────────────────────────────
+    
     function isSignedIn() {
       return request.auth != null;
     }
 
+    // Safely check if the user doc exists, then safely check the role
     function isAdmin() {
-      return isSignedIn() &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isSignedIn() 
+        && exists(userPath) 
+        && get(userPath).data.get('role', 'student') == 'admin';
+    }
+
+    // Safely check if the user doc exists, then safely check the ban status
+    function isNotBanned() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      // If the doc doesn't exist, we assume they aren't banned yet. 
+      // Change to `exists(userPath) &&` if they MUST have a profile to read.
+      return isSignedIn() 
+        && (!exists(userPath) || get(userPath).data.get('isBanned', false) != true);
     }
 
     function isOwner(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
 
-    // ── Users ─────────────────────────────────────────────────────────────────
-    // Students can read their own doc; admins can read all.
-    // On creation: only name, phoneNumber, email, role (forced to 'student') allowed.
-    // On update: students can ONLY change name & phoneNumber (cannot touch role/grade).
-    // Admins can update anything.
+    // ── USERS & PROFILES ──────────────────────────────────────────────────────
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
 
+      // On signup: force student role and active status
       allow create: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['name', 'phoneNumber', 'email', 'role', 'createdAt', 'isBanned'])
-        && request.resource.data.role == 'student';
+        && request.resource.data.role == 'student'
+        && request.resource.data.isBanned == false;
 
-      allow update: if isAdmin()
-        || (isOwner(uid)
+      // Update logic: 
+      // 1. Admins: can edit everything EXCEPT they cannot remove their own admin role.
+      // 2. Students: can only edit non-sensitive fields (name, phone).
+      allow update: if (isAdmin() && (uid != request.auth.uid || request.resource.data.role == 'admin'))
+        || (isOwner(uid) && isNotBanned()
             && !request.resource.data.diff(resource.data).affectedKeys()
-                .hasAny(['role', 'isBanned', 'grade']));
+                .hasAny(['role', 'isBanned', 'grade', 'email']));
 
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() && uid != request.auth.uid;
     }
 
-    // ── Lectures ──────────────────────────────────────────────────────────────
-    // Students can read active lectures; admins can do anything.
-    match /lectures/{lectureId} {
-      allow read: if isSignedIn() && (resource.data.isActive == true || isAdmin());
+    // ── EDUCATIONAL CONTENT (LECTURES, ASSIGNMENTS, QUIZZES) ──────────────────
+    
+    // Lectures & Lessons
+    match /lectures/{docId} {
+      allow read: if isNotBanned() && (resource.data.isActive == true || isAdmin());
       allow write: if isAdmin();
     }
 
-    // ── Assignments ───────────────────────────────────────────────────────────
-    match /assignments/{assignmentId} {
-      allow read: if isSignedIn() && (resource.data.isActive == true || isAdmin());
+    // Assignments Builder
+    match /assignments/{docId} {
+      allow read: if isNotBanned() && (resource.data.isActive == true || isAdmin());
       allow write: if isAdmin();
     }
 
-    // ── Quizzes ───────────────────────────────────────────────────────────────
-    match /quizzes/{quizId} {
-      allow read: if isSignedIn() && (resource.data.isActive == true || isAdmin());
+    // Quizzes Builder
+    match /quizzes/{docId} {
+      allow read: if isNotBanned() && (resource.data.isActive == true || isAdmin());
       allow write: if isAdmin();
     }
 
-    // ── Assignment Results (manual grading) ───────────────────────────────────
-    // Students can create their own submissions and read them.
-    // Admins can read and update (to add grade/feedback).
+    // ── RESULTS & PERFORMANCE (AUTO-GRADED) ───────────────────────────────────
+
     match /assignmentsResult/{docId} {
-      allow read: if isSignedIn() &&
-        (isAdmin() || resource.data.userId == request.auth.uid);
-
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'pending';
-
-      allow update: if isAdmin()
-        || (isOwner(resource.data.userId)
-            && !request.resource.data.diff(resource.data).affectedKeys()
-                .hasAny(['score', 'feedback', 'status', 'gradedAt', 'gradedBy']));
-
+      allow read: if isNotBanned() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isNotBanned() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // ── Quiz Results (auto-graded) ────────────────────────────────────────────
     match /quizzesResult/{docId} {
-      allow read: if isSignedIn() &&
-        (isAdmin() || resource.data.userId == request.auth.uid);
-
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
-
+      allow read: if isNotBanned() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isNotBanned() && request.resource.data.userId == request.auth.uid;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // ── Submissions (assignment file/text submissions) ────────────────────────
+    // ── ACTIVITY & LOGS ───────────────────────────────────────────────────────
+
     match /submissions/{docId} {
-      allow read: if isSignedIn() &&
-        (isAdmin() || resource.data.userId == request.auth.uid);
-
-      allow create: if isSignedIn()
-        && request.resource.data.userId == request.auth.uid;
-
+      allow read: if isNotBanned() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isNotBanned() && request.resource.data.userId == request.auth.uid;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // ── Attendance ────────────────────────────────────────────────────────────
     match /attendances/{docId} {
-      allow read: if isSignedIn() &&
-        (isAdmin() || resource.data.userId == request.auth.uid);
+      allow read: if isNotBanned() && (isAdmin() || resource.data.userId == request.auth.uid);
       allow write: if isAdmin();
     }
 
-    // ── App Config / Settings ─────────────────────────────────────────────────
+    // System Configuration
     match /config/{docId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();

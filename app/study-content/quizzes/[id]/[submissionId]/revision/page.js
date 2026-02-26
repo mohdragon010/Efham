@@ -125,7 +125,8 @@ export default function QuizRevisionPage({ params }) {
                                     <div className="grid gap-4">
                                         {q.options.map((option, optIdx) => {
                                             const isChosen = userAnswer?.selected === option;
-                                            const isCorrectOption = q.correct === option;
+                                            const correctValue = q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : null);
+                                            const isCorrectOption = correctValue === option;
 
                                             let stateClass = "border-slate-100 bg-white text-slate-600";
                                             if (isChosen && isCorrect) stateClass = "border-green-500 bg-green-500 text-white shadow-lg shadow-green-500/20";
@@ -176,7 +177,7 @@ export default function QuizRevisionPage({ params }) {
                                                 "font-medium text-sm leading-relaxed",
                                                 isCorrect ? "text-green-700/80" : "text-slate-500"
                                             )}>
-                                                {q.explanation || `الإجابة الصحيحة هي "${q.correct}".`}
+                                                {q.explanation || `الإجابة الصحيحة هي "${q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : "غير محددة")}".`}
                                             </p>
                                         </div>
                                     </motion.div>

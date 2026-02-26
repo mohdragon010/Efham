@@ -44,7 +44,8 @@ export default function StartQuizPage({ params }) {
             let score = 0;
             const processedAnswers = quiz.questions.map(q => {
                 const selected = currentAnswers[q.id];
-                const isCorrect = selected === q.correct;
+                const correctValue = q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : null);
+                const isCorrect = selected === correctValue;
                 if (isCorrect) score += q.points;
                 return {
                     questionId: q.id,
@@ -121,7 +122,7 @@ export default function StartQuizPage({ params }) {
                     const startTime = sessionData.startTime.toDate().getTime();
                     const now = Date.now();
                     const elapsedSeconds = Math.floor((now - startTime) / 1000);
-                    const totalAllowed = quizData.duration * 60;
+                    const totalAllowed = (quizData.duration || 30) * 60;
 
                     if (elapsedSeconds >= totalAllowed) {
                         // Time expired while away
@@ -147,7 +148,7 @@ export default function StartQuizPage({ params }) {
                         answers: {},
                         lastSync: serverTimestamp()
                     });
-                    setTimeLeft(quizData.duration * 60);
+                    setTimeLeft((quizData.duration || 30) * 60);
                 }
             } catch (err) {
                 console.error("Initialization error:", err);

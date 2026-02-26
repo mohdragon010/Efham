@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
     Plus, HelpCircle, Edit2, Trash2, Eye, EyeOff, X,
     Save, Loader2, ChevronDown, ChevronUp, CheckCircle2,
-    Star
+    Star, Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,14 @@ function MCQQuestion({ question, index, onChange, onRemove }) {
         let newCorrect = correctIndex;
         if (correctIndex === optIdx) newCorrect = 0;
         else if (correctIndex > optIdx) newCorrect = correctIndex - 1;
-        onChange({ ...question, options: newOptions, correctIndex: newCorrect });
+
+        // Update both index and text
+        onChange({
+            ...question,
+            options: newOptions,
+            correctIndex: newCorrect,
+            correct: newOptions[newCorrect]
+        });
     };
 
     return (
@@ -57,7 +64,10 @@ function MCQQuestion({ question, index, onChange, onRemove }) {
                                     onChange={e => {
                                         const newOptions = [...options];
                                         newOptions[i] = e.target.value;
-                                        onChange({ ...question, options: newOptions });
+                                        // If this option is the correct one, update the 'correct' text too
+                                        const update = { options: newOptions };
+                                        if (correctIndex === i) update.correct = e.target.value;
+                                        onChange({ ...question, ...update });
                                     }}
                                     className={cn(
                                         "w-full bg-slate-50 border-2 py-3 pr-12 pl-12 rounded-2xl text-sm font-bold transition-all focus:outline-none",
@@ -67,7 +77,7 @@ function MCQQuestion({ question, index, onChange, onRemove }) {
                                     )}
                                 />
                                 <button
-                                    onClick={() => onChange({ ...question, correctIndex: i })}
+                                    onClick={() => onChange({ ...question, correctIndex: i, correct: options[i] })}
                                     className={cn(
                                         "absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl flex items-center justify-center transition-all",
                                         correctIndex === i
@@ -114,6 +124,7 @@ function QuizModal({ quiz, onClose, onSaved }) {
         title: quiz?.title || "",
         description: quiz?.description || "",
         isActive: quiz?.isActive ?? true,
+        duration: quiz?.duration || 30,
         questions: quiz?.questions || [],
     });
     const [saving, setSaving] = useState(false);
@@ -139,6 +150,7 @@ function QuizModal({ quiz, onClose, onSaved }) {
 
     const handleSave = async () => {
         if (!form.title.trim()) return alert("أدخل عنوان الاختبار");
+        if (!form.duration || form.duration <= 0) return alert("أدخل مدة صالحة للاختبار");
         if (form.questions.length === 0) return alert("أضف سؤالاً واحداً على الأقل");
 
         // Validation
@@ -153,6 +165,7 @@ function QuizModal({ quiz, onClose, onSaved }) {
                 title: form.title,
                 description: form.description,
                 isActive: form.isActive,
+                duration: Number(form.duration),
                 questions: form.questions,
                 totalPoints,
                 updatedAt: serverTimestamp(),
@@ -186,6 +199,8 @@ function QuizModal({ quiz, onClose, onSaved }) {
                             <span className="text-slate-400 text-[10px] font-black uppercase tracking-widest">منظومة الاختبارات الآلية</span>
                             <div className="w-1 h-1 rounded-full bg-slate-200" />
                             <span className="text-orange-600 text-[10px] font-black uppercase tracking-tight">{totalPoints} درجة إجمالية</span>
+                            <div className="w-1 h-1 rounded-full bg-slate-200" />
+                            <span className="text-violet-600 text-[10px] font-black uppercase tracking-tight">{form.duration} دقيقة</span>
                         </div>
                     </div>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-900 p-2 rounded-xl transition-all"><X className="w-7 h-7" /></button>
@@ -204,16 +219,26 @@ function QuizModal({ quiz, onClose, onSaved }) {
                                 placeholder="وصف موجز يظهر للطلاب..."
                                 className="w-full bg-slate-50 text-slate-900 text-base rounded-2xl px-4 py-4 border border-slate-100 focus:outline-none focus:border-violet-500 resize-none font-medium" />
                         </div>
-                        <button onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))}
-                            className={cn(
-                                "flex items-center gap-2 px-6 py-2.5 rounded-xl border-2 font-black text-xs transition-all",
-                                form.isActive
-                                    ? "bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm shadow-emerald-50"
-                                    : "bg-slate-50 border-slate-100 text-slate-400"
-                            )}>
-                            <div className={cn("w-2 h-2 rounded-full", form.isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-300")} />
-                            {form.isActive ? "الاختبار نشط ومرئي الآن" : "الاختبار مخفي (مسودة)"}
-                        </button>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-slate-900 text-sm font-black mr-1">مدة الاختبار (بالدقائق) *</label>
+                                <Input type="number" value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}
+                                    placeholder="مثال: 30"
+                                    className="bg-slate-50 border-slate-100 text-slate-900 h-12 rounded-xl font-bold" />
+                            </div>
+                            <div className="space-y-2 flex flex-col justify-end">
+                                <button onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))}
+                                    className={cn(
+                                        "flex items-center gap-2 px-6 py-2.5 h-12 rounded-xl border-2 font-black text-xs transition-all",
+                                        form.isActive
+                                            ? "bg-emerald-50 border-emerald-100 text-emerald-600 shadow-sm shadow-emerald-50"
+                                            : "bg-slate-50 border-slate-100 text-slate-400"
+                                    )}>
+                                    <div className={cn("w-2 h-2 rounded-full", form.isActive ? "bg-emerald-500 animate-pulse" : "bg-slate-300")} />
+                                    {form.isActive ? "الاختبار نشط الآن" : "الاختبار مخفي (مسودة)"}
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="space-y-6 pt-6 border-t border-slate-50">
@@ -277,6 +302,8 @@ function QuizRow({ quiz, onEdit, onDelete, onToggle }) {
                     </div>
                     <div className="flex items-center gap-3 text-slate-400 text-xs font-bold uppercase tracking-tight">
                         <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-500" /> {quiz.totalPoints ?? 0} درجة</span>
+                        <div className="w-1 h-1 rounded-full bg-slate-200" />
+                        <span className="flex items-center gap-1.5 text-slate-500/80"><Clock className="w-3 h-3" /> {quiz.duration || 30} دقيقة</span>
                         <div className="w-1 h-1 rounded-full bg-slate-200" />
                         <span>{quiz.questions?.length ?? 0} سؤال مؤتمت (MCQ)</span>
                     </div>

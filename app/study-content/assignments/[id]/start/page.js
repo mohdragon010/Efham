@@ -68,7 +68,8 @@ export default function StartAssignmentPage({ params }) {
             let score = 0;
             const processedAnswers = assignment.questions.map(q => {
                 const selected = answers[q.id];
-                const isCorrect = selected === q.correct;
+                const correctValue = q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : null);
+                const isCorrect = selected === correctValue;
                 if (isCorrect) score += q.points;
                 return {
                     questionId: q.id,
