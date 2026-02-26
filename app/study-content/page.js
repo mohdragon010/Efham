@@ -1,6 +1,6 @@
 "use client"
 import { useState, useEffect } from "react";
-import { collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import useAuth from "@/hooks/useAuth";
 import { motion, AnimatePresence } from "framer-motion";
@@ -20,45 +20,40 @@ export default function StudyContent() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // 1. Fetch Lectures
-        const lecturesRef = collection(db, "lectures");
-        const qLectures = query(lecturesRef, where("isActive", "==", true), orderBy("order", "asc"));
+        let cancelled = false;
+        const fetchAll = async () => {
+            try {
+                const [lecturesSnap, quizSnap, assignmentSnap] = await Promise.all([
+                    getDocs(query(collection(db, "lectures"), where("isActive", "==", true), orderBy("order", "asc"))),
+                    getDocs(query(collection(db, "quizzes"), where("isActive", "==", true), orderBy("createdAt", "desc"), limit(1))),
+                    getDocs(query(collection(db, "assignments"), where("isActive", "==", true), orderBy("createdAt", "desc"), limit(1)))
+                ]);
 
-        // 2. Fetch Latest Quiz
-        const quizzesRef = collection(db, "quizzes");
-        const qQuiz = query(quizzesRef, where("isActive", "==", true), orderBy("createdAt", "desc"), limit(1));
+                if (cancelled) return;
 
-        // 3. Fetch Latest Assignment
-        const assignmentsRef = collection(db, "assignments");
-        const qAssignment = query(assignmentsRef, where("isActive", "==", true), orderBy("createdAt", "desc"), limit(1));
+                setLectures(lecturesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
-        const unsubLectures = onSnapshot(qLectures, (snapshot) => {
-            setLectures(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        });
+                if (!quizSnap.empty) {
+                    setLatestQuiz({ id: quizSnap.docs[0].id, ...quizSnap.docs[0].data() });
+                }
 
-        const unsubQuiz = onSnapshot(qQuiz, (snapshot) => {
-            if (!snapshot.empty) {
-                setLatestQuiz({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
+                if (!assignmentSnap.empty) {
+                    setLatestAssignment({ id: assignmentSnap.docs[0].id, ...assignmentSnap.docs[0].data() });
+                }
+            } catch (err) {
+                console.error("Error fetching study content:", err);
+            } finally {
+                if (!cancelled) setLoading(false);
             }
-        });
-
-        const unsubAssignment = onSnapshot(qAssignment, (snapshot) => {
-            if (!snapshot.empty) {
-                setLatestAssignment({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
-            }
-            setLoading(false);
-        });
-
-        return () => {
-            unsubLectures();
-            unsubQuiz();
-            unsubAssignment();
         };
+
+        fetchAll();
+        return () => { cancelled = true; };
     }, []);
 
     const filteredLectures = lectures.filter(l =>
-        l.title.toLowerCase().includes(search.toLowerCase()) ||
-        l.description.toLowerCase().includes(search.toLowerCase())
+        (l.title?.toLowerCase() || "").includes(search.toLowerCase()) ||
+        (l.description?.toLowerCase() || "").includes(search.toLowerCase())
     );
 
     return (
@@ -113,7 +108,7 @@ export default function StudyContent() {
                     ) : latestAssignment ? (
                         <AssignmentCard assignment={latestAssignment} />
                     ) : (
-                        <div className="h-70late-50 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-400 gap-3">
+                        <div className="h-70 bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl flex flex-col items-center justify-center text-slate-400 gap-3">
                             <BookOpen className="w-10 h-10 opacity-30" />
                             <p className="font-bold">لا يوجد واجبات حالياً</p>
                         </div>

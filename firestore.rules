@@ -1,0 +1,115 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper functions ─────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── Users ─────────────────────────────────────────────────────────────────
+    // Students can read their own doc; admins can read all.
+    // On creation: only name, phoneNumber, email, role (forced to 'student') allowed.
+    // On update: students can ONLY change name & phoneNumber (cannot touch role/grade).
+    // Admins can update anything.
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['name', 'phoneNumber', 'email', 'role', 'createdAt', 'isBanned'])
+        && request.resource.data.role == 'student';
+
+      allow update: if isAdmin()
+        || (isOwner(uid)
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['role', 'isBanned', 'grade']));
+
+      allow delete: if isAdmin();
+    }
+
+    // ── Lectures ──────────────────────────────────────────────────────────────
+    // Students can read active lectures; admins can do anything.
+    match /lectures/{lectureId} {
+      allow read: if isSignedIn() && (resource.data.isActive == true || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // ── Assignments ───────────────────────────────────────────────────────────
+    match /assignments/{assignmentId} {
+      allow read: if isSignedIn() && (resource.data.isActive == true || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // ── Quizzes ───────────────────────────────────────────────────────────────
+    match /quizzes/{quizId} {
+      allow read: if isSignedIn() && (resource.data.isActive == true || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    // ── Assignment Results (manual grading) ───────────────────────────────────
+    // Students can create their own submissions and read them.
+    // Admins can read and update (to add grade/feedback).
+    match /assignmentsResult/{docId} {
+      allow read: if isSignedIn() &&
+        (isAdmin() || resource.data.userId == request.auth.uid);
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending';
+
+      allow update: if isAdmin()
+        || (isOwner(resource.data.userId)
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['score', 'feedback', 'status', 'gradedAt', 'gradedBy']));
+
+      allow delete: if isAdmin();
+    }
+
+    // ── Quiz Results (auto-graded) ────────────────────────────────────────────
+    match /quizzesResult/{docId} {
+      allow read: if isSignedIn() &&
+        (isAdmin() || resource.data.userId == request.auth.uid);
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Submissions (assignment file/text submissions) ────────────────────────
+    match /submissions/{docId} {
+      allow read: if isSignedIn() &&
+        (isAdmin() || resource.data.userId == request.auth.uid);
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid;
+
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Attendance ────────────────────────────────────────────────────────────
+    match /attendances/{docId} {
+      allow read: if isSignedIn() &&
+        (isAdmin() || resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // ── App Config / Settings ─────────────────────────────────────────────────
+    match /config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

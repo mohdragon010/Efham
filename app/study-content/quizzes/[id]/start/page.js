@@ -63,7 +63,9 @@ export default function StartQuizPage({ params }) {
                 totalPoints: quiz.totalPoints,
                 answers: processedAnswers,
                 wrongQuestionIds: processedAnswers.filter(a => !a.isCorrect).map(a => a.questionId),
-                submittedAt: serverTimestamp()
+                status: "graded",
+                submittedAt: serverTimestamp(),
+                gradedAt: serverTimestamp()
             });
 
             // 2. Clear Session

@@ -88,10 +88,10 @@ function ErrorState({ onRetry }) {
 
 // ── type config ───────────────────────────────────────────────────────────────
 const TYPE_META = {
-  video:     { label: "فيديو",  Icon: Video,       color: "text-rose-500",   bg: "bg-rose-50",   border: "border-rose-100"   },
-  rich_text: { label: "نص",     Icon: FileText,     color: "text-indigo-500", bg: "bg-indigo-50", border: "border-indigo-100" },
-  image:     { label: "صورة",   Icon: ImageIcon,    color: "text-emerald-500",bg: "bg-emerald-50",border: "border-emerald-100"},
-  pdf:       { label: "PDF",    Icon: FileArchive,  color: "text-orange-500", bg: "bg-orange-50", border: "border-orange-100" },
+  video: { label: "فيديو", Icon: Video, color: "text-rose-500", bg: "bg-rose-50", border: "border-rose-100" },
+  rich_text: { label: "نص", Icon: FileText, color: "text-indigo-500", bg: "bg-indigo-50", border: "border-indigo-100" },
+  image: { label: "صورة", Icon: ImageIcon, color: "text-emerald-500", bg: "bg-emerald-50", border: "border-emerald-100" },
+  pdf: { label: "PDF", Icon: FileArchive, color: "text-orange-500", bg: "bg-orange-50", border: "border-orange-100" },
 };
 
 function CardHeader({ type, label }) {
@@ -114,16 +114,14 @@ function CardHeader({ type, label }) {
 }
 
 // ── content renderers ─────────────────────────────────────────────────────────
+import CustomVideoPlayer from "@/components/CustomVideoPlayer";
+
+// ... (other components)
+
 function VideoBlock({ item }) {
   return (
-    <div className="aspect-video w-full bg-black">
-      <iframe
-        src={`https://www.youtube.com/embed/${item.value}`}
-        title={item.label ?? "video"}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowFullScreen
-        className="w-full h-full"
-      />
+    <div className="w-full bg-black rounded-2xl overflow-hidden shadow-2xl">
+      <CustomVideoPlayer videoId={item.value} title={item.label} />
     </div>
   );
 }
@@ -143,7 +141,7 @@ function RichTextBlock({ item }) {
 function ImageBlock({ item }) {
   return (
     <div className="p-4">
-      <img src={item.value} alt={item.label ?? "image"} 
+      <img src={item.value} alt={item.label ?? "image"}
         className="w-full rounded-xl object-cover max-h-120" />
     </div>
   );
@@ -168,10 +166,10 @@ function PdfBlock({ item }) {
 function ContentCard({ item, index }) {
   const renderBody = () => {
     switch (item.type) {
-      case "video":     return <VideoBlock     item={item} />;
-      case "rich_text": return <RichTextBlock  item={item} />;
-      case "image":     return <ImageBlock     item={item} />;
-      case "pdf":       return <PdfBlock       item={item} />;
+      case "video": return <VideoBlock item={item} />;
+      case "rich_text": return <RichTextBlock item={item} />;
+      case "image": return <ImageBlock item={item} />;
+      case "pdf": return <PdfBlock item={item} />;
       default:
         return (
           <div className="px-5 py-4 text-xs text-slate-400 font-mono" dir="rtl">
@@ -197,7 +195,7 @@ function ContentCard({ item, index }) {
 export default function SubLecturePage() {
   const { lectureId, subLectureId } = useParams();
   const [subLecture, setSubLecture] = useState(null);
-  const [status, setStatus]         = useState("loading");
+  const [status, setStatus] = useState("loading");
 
   async function fetchSubLecture() {
     setStatus("loading");
@@ -218,9 +216,9 @@ export default function SubLecturePage() {
 
   useEffect(() => { fetchSubLecture(); }, []);
 
-  if (status === "loading")   return <div className="p-6"><LoadingState /></div>;
+  if (status === "loading") return <div className="p-6"><LoadingState /></div>;
   if (status === "not-found") return <div className="p-6"><NotFoundState /></div>;
-  if (status === "error")     return <div className="p-6"><ErrorState onRetry={fetchSubLecture} /></div>;
+  if (status === "error") return <div className="p-6"><ErrorState onRetry={fetchSubLecture} /></div>;
 
   const content = subLecture?.content ?? [];
 

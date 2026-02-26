@@ -86,7 +86,9 @@ export default function StartAssignmentPage({ params }) {
                 totalPoints: assignment.totalPoints,
                 answers: processedAnswers,
                 wrongQuestionIds: processedAnswers.filter(a => !a.isCorrect).map(a => a.questionId),
-                submittedAt: serverTimestamp()
+                status: "graded",
+                submittedAt: serverTimestamp(),
+                gradedAt: serverTimestamp()
             });
 
             router.push(`/study-content/assignments/${id}/${docRef.id}/result`);

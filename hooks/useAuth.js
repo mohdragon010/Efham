@@ -15,23 +15,21 @@ export default function useAuth() {
             setUser(currentUser);
 
             if (currentUser) {
-
                 try {
                     const userDoc = await getDoc(doc(db, "users", currentUser.uid));
                     if (userDoc.exists()) {
                         setUserData({ ...userDoc.data(), id: userDoc.id });
                     }
-                }
-                catch (err) {
+                } catch (err) {
                     console.log("error fetching user:", err);
                     setUser(null);
-                    logout()
+                    setUserData(null);
                 }
             } else {
                 setUserData(null);
             }
             setLoading(false);
-        })
+        });
         return () => unsubscribe();
     }, []);
 
@@ -39,8 +37,10 @@ export default function useAuth() {
         try {
             await signOut(auth);
         } catch (err) {
-            console.log("error signing out: ", err)
+            console.log("error signing out:", err);
         }
-    }
-    return { user, userData, loading, logout, isAdmin: userData?.role === "admin" }
+    };
+
+    const isAdmin = userData?.role === "admin" || userData?.role === "teacher";
+    return { user, userData, loading, logout, isAdmin };
 }
