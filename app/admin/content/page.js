@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useAlert } from "@/components/providers/alert-provider";
 
 const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
@@ -41,6 +42,7 @@ const TYPE_ICONS = {
 
 // ── Content Entry Row (Internal items of a lesson) ──────────────────────────────
 function ContentEntryRow({ entry, index, total, onChange, onRemove }) {
+    const { showAlert } = useAlert();
     const [uploading, setUploading] = useState(false);
 
     const extractYouTubeId = (url) => {
@@ -59,7 +61,7 @@ function ContentEntryRow({ entry, index, total, onChange, onRemove }) {
             const url = await uploadToCloudinary(file, isVideo ? "video" : "auto");
             onChange({ ...entry, value: url });
         } catch (err) {
-            alert("فشل رفع الملف: " + err.message);
+            showAlert("فشل رفع الملف: " + err.message, "خطأ في الرفع", "error");
         } finally {
             setUploading(false);
         }
@@ -141,6 +143,7 @@ function ContentEntryRow({ entry, index, total, onChange, onRemove }) {
 
 // ── Sub-Lecture (Lesson) Form Modal ───────────────────────────────────────────
 function SubLectureModal({ lecture, subLecture, onClose, onSaved }) {
+    const { showAlert } = useAlert();
     const isEdit = !!subLecture;
     // We use a flat state for editing
     const [form, setForm] = useState({
@@ -181,8 +184,8 @@ function SubLectureModal({ lecture, subLecture, onClose, onSaved }) {
     };
 
     const handleSave = async () => {
-        if (!form.title.trim()) return alert("أدخل عنوان الدرس");
-        if (!form.id.trim()) return alert("أدخل معرف الدرس (ID)");
+        if (!form.title.trim()) return showAlert("أدخل عنوان الدرس", "حقل مطلوب", "warning");
+        if (!form.id.trim()) return showAlert("أدخل معرف الدرس (ID)", "حقل مطلوب", "warning");
 
         setSaving(true);
         try {
@@ -209,7 +212,7 @@ function SubLectureModal({ lecture, subLecture, onClose, onSaved }) {
             onSaved();
             onClose();
         } catch (e) {
-            alert("فشل الحفظ: " + e.message);
+            showAlert("فشل الحفظ: " + e.message, "خطأ في الحفظ", "error");
         } finally {
             setSaving(false);
         }
@@ -334,6 +337,7 @@ function SubLectureModal({ lecture, subLecture, onClose, onSaved }) {
 
 // ── Lecture Form Modal ────────────────────────────────────────────────────────
 function LectureModal({ lecture, onClose, onSaved, nextOrder }) {
+    const { showAlert } = useAlert();
     const isEdit = !!lecture;
     const [form, setForm] = useState({
         title: lecture?.title || "",
@@ -360,14 +364,14 @@ function LectureModal({ lecture, onClose, onSaved, nextOrder }) {
             const url = await uploadToCloudinary(file, "image");
             setForm(f => ({ ...f, thumbnail: url }));
         } catch (err) {
-            alert("فشل رفع الصورة: " + err.message);
+            showAlert("فشل رفع الصورة: " + err.message, "خطأ في الرفع", "error");
         } finally {
             setUploading(false);
         }
     };
 
     const handleSave = async () => {
-        if (!form.title.trim()) return alert("أدخل عنوان المحاضرة");
+        if (!form.title.trim()) return showAlert("أدخل عنوان المحاضرة", "حقل مطلوب", "warning");
         setSaving(true);
         try {
             const data = {
@@ -390,7 +394,7 @@ function LectureModal({ lecture, onClose, onSaved, nextOrder }) {
             onSaved();
             onClose();
         } catch (e) {
-            alert("فشل الحفظ: " + e.message);
+            showAlert("فشل الحفظ: " + e.message, "خطأ في الحفظ", "error");
         } finally {
             setSaving(false);
         }
@@ -491,23 +495,25 @@ function LectureModal({ lecture, onClose, onSaved, nextOrder }) {
 
 // ── Lecture Row ───────────────────────────────────────────────────────────────
 function LectureRow({ lecture, onEdit, onDelete, onToggle, onRefresh }) {
+    const { showConfirm } = useAlert();
     const [expanded, setExpanded] = useState(false);
     const [subModal, setSubModal] = useState(null);
     const [deletingSubId, setDeletingSubId] = useState(null);
 
     const handleDeleteSub = async (subId) => {
-        if (!confirm("هل تريد حذف هذا الدرس نهائياً من المحاضرة؟")) return;
-        setDeletingSubId(subId);
-        try {
-            const updatedList = (lecture.subLectures || []).filter(s => s.id !== subId);
-            await updateDoc(doc(db, "lectures", lecture.id), {
-                subLectures: updatedList,
-                updatedAt: serverTimestamp()
-            });
-            onRefresh();
-        } finally {
-            setDeletingSubId(null);
-        }
+        showConfirm("هل تريد حذف هذا الدرس نهائياً من المحاضرة؟", async () => {
+            setDeletingSubId(subId);
+            try {
+                const updatedList = (lecture.subLectures || []).filter(s => s.id !== subId);
+                await updateDoc(doc(db, "lectures", lecture.id), {
+                    subLectures: updatedList,
+                    updatedAt: serverTimestamp()
+                });
+                onRefresh();
+            } finally {
+                setDeletingSubId(null);
+            }
+        });
     };
 
     const subLectures = lecture.subLectures || [];
@@ -652,6 +658,7 @@ function LectureRow({ lecture, onEdit, onDelete, onToggle, onRefresh }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminContentPage() {
+    const { showConfirm } = useAlert();
     const [lectures, setLectures] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null);
@@ -672,9 +679,10 @@ export default function AdminContentPage() {
     }, []);
 
     const handleDelete = async (id) => {
-        if (!confirm("تحذير: سيتم حذف المحاضرة وجميع الدروس داخلها نهائياً! هل أنت متأكد؟")) return;
-        await deleteDoc(doc(db, "lectures", id));
-        setLectures(l => l.filter(x => x.id !== id));
+        showConfirm("تحذير: سيتم حذف المحاضرة وجميع الدروس داخلها نهائياً! هل أنت متأكد؟", async () => {
+            await deleteDoc(doc(db, "lectures", id));
+            setLectures(l => l.filter(x => x.id !== id));
+        });
     };
 
     const handleToggle = async (lecture) => {
@@ -700,13 +708,7 @@ export default function AdminContentPage() {
             {loading ? (
                 <div className="space-y-6">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="h-40 bg-white rounded-[3rem] border border-slate-100 flex items-center p-8 gap-6 animate-pulse">
-                            <div className="w-24 h-24 rounded-3xl bg-slate-50" />
-                            <div className="flex-1 space-y-3">
-                                <div className="h-6 w-1/3 bg-slate-50 rounded-lg" />
-                                <div className="h-4 w-2/3 bg-slate-50 rounded-lg" />
-                            </div>
-                        </div>
+                        <div key={i} className="h-40 bg-slate-200 rounded-[3rem] animate-pulse" />
                     ))}
                 </div>
             ) : lectures.length === 0 ? (

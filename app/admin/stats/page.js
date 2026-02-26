@@ -124,13 +124,13 @@ export default function AdminStatsPage() {
     if (loading) {
         return (
             <div className="p-8 space-y-6">
-                <div className="h-8 w-48 bg-slate-100 rounded-xl animate-pulse" />
+                <div className="h-8 w-48 bg-slate-200 rounded-xl animate-pulse" />
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                    {[1, 2, 3].map(i => <div key={i} className="h-32 bg-white border border-slate-100 rounded-2xl animate-pulse" />)}
+                    {[1, 2, 3].map(i => <div key={i} className="h-32 bg-slate-200 rounded-2xl animate-pulse" />)}
                 </div>
                 <div className="grid lg:grid-cols-2 gap-6">
-                    <div className="h-80 bg-white border border-slate-100 rounded-2xl animate-pulse" />
-                    <div className="h-80 bg-white border border-slate-100 rounded-2xl animate-pulse" />
+                    <div className="h-80 bg-slate-200 rounded-2xl animate-pulse" />
+                    <div className="h-80 bg-slate-200 rounded-2xl animate-pulse" />
                 </div>
             </div>
         );

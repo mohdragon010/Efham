@@ -14,9 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useAlert } from "@/components/providers/alert-provider";
 
 // ── MCQ Question Builder ───────────────────────────────────────────────────────
 function MCQQuestion({ question, index, onChange, onRemove }) {
+    const { showAlert } = useAlert();
     const { text = "", options = ["", "", "", ""], correctIndex = 0, points = 5 } = question;
 
     const addOption = () => {
@@ -24,7 +26,7 @@ function MCQQuestion({ question, index, onChange, onRemove }) {
     };
 
     const removeOption = (optIdx) => {
-        if (options.length <= 2) return alert("يجب أن يحتوي السؤال على خيارين على الأقل");
+        if (options.length <= 2) return showAlert("يجب أن يحتوي السؤال على خيارين على الأقل", "تنبيه", "warning");
         const newOptions = options.filter((_, idx) => idx !== optIdx);
         let newCorrect = correctIndex;
         if (correctIndex === optIdx) newCorrect = 0;
@@ -119,6 +121,7 @@ function MCQQuestion({ question, index, onChange, onRemove }) {
 
 // ── Quiz Form Modal ────────────────────────────────────────────────────────────
 function QuizModal({ quiz, onClose, onSaved }) {
+    const { showAlert } = useAlert();
     const isEdit = !!quiz;
     const [form, setForm] = useState({
         title: quiz?.title || "",
@@ -149,14 +152,14 @@ function QuizModal({ quiz, onClose, onSaved }) {
     const totalPoints = form.questions.reduce((sum, q) => sum + (q.points || 0), 0);
 
     const handleSave = async () => {
-        if (!form.title.trim()) return alert("أدخل عنوان الاختبار");
-        if (!form.duration || form.duration <= 0) return alert("أدخل مدة صالحة للاختبار");
-        if (form.questions.length === 0) return alert("أضف سؤالاً واحداً على الأقل");
+        if (!form.title.trim()) return showAlert("أدخل عنوان الاختبار", "حقل مطلوب", "warning");
+        if (!form.duration || form.duration <= 0) return showAlert("أدخل مدة صالحة للاختبار", "خطأ في البيانات", "warning");
+        if (form.questions.length === 0) return showAlert("أضف سؤالاً واحداً على الأقل", "نقص بيانات", "warning");
 
         // Validation
         for (const q of form.questions) {
-            if (!q.text.trim()) return alert("أكمل جميع نصوص الأسئلة");
-            if (q.options.some(o => !o.trim())) return alert("أكمل جميع خيارات الإجابة");
+            if (!q.text.trim()) return showAlert("أكمل جميع نصوص الأسئلة", "تنبيه", "warning");
+            if (q.options.some(o => !o.trim())) return showAlert("أكمل جميع خيارات الإجابة", "تنبيه", "warning");
         }
 
         setSaving(true);
@@ -178,7 +181,7 @@ function QuizModal({ quiz, onClose, onSaved }) {
             onSaved();
             onClose();
         } catch (e) {
-            alert("فشل الحفظ: " + e.message);
+            showAlert("فشل الحفظ: " + e.message, "خطأ", "error");
         } finally {
             setSaving(false);
         }
@@ -286,13 +289,13 @@ function QuizRow({ quiz, onEdit, onDelete, onToggle }) {
 
     return (
         <div className="bg-white rounded-3xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-slate-200/40 transition-all group">
-            <div className="flex items-center gap-6 p-6">
-                <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0 shadow-sm shadow-orange-50">
-                    <HelpCircle className="w-7 h-7 text-orange-500" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 p-4 sm:p-6">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0 shadow-sm">
+                    <HelpCircle className="w-6 h-6 sm:w-7 sm:h-7 text-orange-500" />
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1.5 flex-wrap">
-                        <h3 className="text-slate-900 font-black text-lg group-hover:text-orange-600 transition-colors">{quiz.title}</h3>
+                        <h3 className="text-slate-900 font-black text-lg group-hover:text-orange-600 transition-colors truncate">{quiz.title}</h3>
                         <span className={cn(
                             "text-[10px] font-black px-2.5 py-1 rounded-lg border",
                             quiz.isActive ? "bg-emerald-50 border-emerald-100 text-emerald-600" : "bg-slate-50 border-slate-100 text-slate-400"
@@ -300,15 +303,15 @@ function QuizRow({ quiz, onEdit, onDelete, onToggle }) {
                             {quiz.isActive ? "فعال" : "مسودة"}
                         </span>
                     </div>
-                    <div className="flex items-center gap-3 text-slate-400 text-xs font-bold uppercase tracking-tight">
+                    <div className="flex items-center gap-3 text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-tight flex-wrap">
                         <span className="flex items-center gap-1"><Star className="w-3.5 h-3.5 text-yellow-500" /> {quiz.totalPoints ?? 0} درجة</span>
                         <div className="w-1 h-1 rounded-full bg-slate-200" />
                         <span className="flex items-center gap-1.5 text-slate-500/80"><Clock className="w-3 h-3" /> {quiz.duration || 30} دقيقة</span>
                         <div className="w-1 h-1 rounded-full bg-slate-200" />
-                        <span>{quiz.questions?.length ?? 0} سؤال مؤتمت (MCQ)</span>
+                        <span className="truncate">{quiz.questions?.length ?? 0} سؤال مؤتمت</span>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 w-full sm:w-auto pt-4 sm:pt-0 border-t sm:border-0 border-slate-50">
                     <Button size="icon" variant="ghost" onClick={() => onToggle(quiz)}
                         className={cn("w-10 h-10 rounded-xl", quiz.isActive ? "text-emerald-500 hover:bg-emerald-50" : "text-slate-300 hover:bg-slate-50")}>
                         {quiz.isActive ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
@@ -321,9 +324,9 @@ function QuizRow({ quiz, onEdit, onDelete, onToggle }) {
                         className="w-10 h-10 rounded-xl text-red-500 hover:bg-red-50">
                         <Trash2 className="w-5 h-5" />
                     </Button>
-                    <div className="w-px h-8 bg-slate-100 mx-1" />
+                    <div className="w-px h-8 bg-slate-100 mx-1 hidden sm:block" />
                     <Button size="icon" variant="ghost" onClick={() => setExpanded(!expanded)}
-                        className={cn("w-12 h-12 rounded-2xl transition-all shadow-sm", expanded ? "bg-slate-900 text-white" : "text-slate-300 hover:bg-slate-100 group-hover:text-slate-600")}>
+                        className={cn("w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl transition-all shadow-sm mr-auto sm:mr-0", expanded ? "bg-slate-900 text-white" : "text-slate-300 hover:bg-slate-100 group-hover:text-slate-600")}>
                         {expanded ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
                     </Button>
                 </div>
@@ -361,6 +364,7 @@ function QuizRow({ quiz, onEdit, onDelete, onToggle }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminQuizzesPage() {
+    const { showConfirm } = useAlert();
     const [quizzes, setQuizzes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null);
@@ -380,9 +384,10 @@ export default function AdminQuizzesPage() {
     }, []);
 
     const handleDelete = async (id) => {
-        if (!confirm("حذف هذا الاختبار نهائياً؟")) return;
-        await deleteDoc(doc(db, "quizzes", id));
-        setQuizzes(prev => prev.filter(q => q.id !== id));
+        showConfirm("حذف هذا الاختبار نهائياً؟", async () => {
+            await deleteDoc(doc(db, "quizzes", id));
+            setQuizzes(prev => prev.filter(q => q.id !== id));
+        });
     };
 
     const handleToggle = async (quiz) => {
@@ -398,25 +403,25 @@ export default function AdminQuizzesPage() {
     });
 
     return (
-        <div className="p-8 space-y-8 min-h-screen">
-            <div className="flex items-center justify-between">
+        <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 min-h-screen">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 font-outfit uppercase tracking-tight">إدارة الاختبارات</h1>
-                    <p className="text-slate-400 text-sm font-black mt-1 tracking-tight uppercase">منظومة التقييم والقياس المؤتمت</p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-outfit uppercase tracking-tight">إدارة الاختبارات</h1>
+                    <p className="text-slate-400 text-xs sm:text-sm font-black mt-1 tracking-tight uppercase">منظومة التقييم والقياس المؤتمت</p>
                 </div>
-                <Button onClick={() => setModal("add")} className="bg-slate-900 hover:bg-black text-white px-8 h-12 rounded-2xl font-black gap-2 shadow-xl shadow-slate-200 transition-all hover:scale-105">
+                <Button onClick={() => setModal("add")} className="w-full sm:w-auto bg-slate-900 hover:bg-black text-white px-8 h-12 rounded-2xl font-black gap-2 shadow-xl shadow-slate-200 transition-all hover:scale-105 active:scale-95">
                     <Plus className="w-5 h-5" /> إضافة اختبار جديد
                 </Button>
             </div>
 
-            <div className="flex gap-2 p-1.5 bg-white border border-slate-100 rounded-2xl w-fit shadow-sm">
-                {[{ value: "all", label: "جميع الاختبارات" }, { value: "active", label: "النشطة حالياً" }, { value: "inactive", label: "المسودات" }].map(f => (
+            <div className="flex gap-1 sm:gap-2 p-1 bg-white border border-slate-100 rounded-2xl w-fit shadow-xs overflow-x-auto max-w-full no-scrollbar">
+                {[{ value: "all", label: "الكل" }, { value: "active", label: "النشطة" }, { value: "inactive", label: "المسودات" }].map(f => (
                     <button key={f.value} onClick={() => setFilter(f.value)}
                         className={cn(
-                            "px-6 py-2 rounded-xl text-xs font-black transition-all",
+                            "px-4 sm:px-6 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black transition-all whitespace-nowrap",
                             filter === f.value
                                 ? "bg-slate-900 text-white shadow-lg shadow-slate-200"
-                                : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                                : "text-slate-400 hover:text-slate-900"
                         )}>
                         {f.label}
                     </button>
@@ -425,7 +430,7 @@ export default function AdminQuizzesPage() {
 
             {loading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <div key={i} className="h-32 bg-white rounded-[2rem] border border-slate-50 animate-pulse shadow-sm" />)}
+                    {[1, 2, 3].map(i => <div key={i} className="h-32 bg-slate-200 rounded-[2rem] animate-pulse" />)}
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="py-32 text-center bg-white rounded-[3rem] border border-slate-50 shadow-sm">

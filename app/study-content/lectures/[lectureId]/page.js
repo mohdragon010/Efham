@@ -20,10 +20,10 @@ function formatDate(ts) {
 }
 
 const TYPE_META = {
-  video:     { label: "فيديو",  Icon: Video,        color: "text-rose-500",    bg: "bg-rose-50",    border: "border-rose-100"    },
-  rich_text: { label: "نص",     Icon: FileText,      color: "text-indigo-500",  bg: "bg-indigo-50",  border: "border-indigo-100"  },
-  image:     { label: "صورة",   Icon: ImageIcon,     color: "text-emerald-500", bg: "bg-emerald-50", border: "border-emerald-100" },
-  pdf:       { label: "PDF",    Icon: FileArchive,   color: "text-orange-500",  bg: "bg-orange-50",  border: "border-orange-100"  },
+  video: { label: "فيديو", Icon: Video, color: "text-rose-500", bg: "bg-rose-50", border: "border-rose-100" },
+  rich_text: { label: "نص", Icon: FileText, color: "text-indigo-500", bg: "bg-indigo-50", border: "border-indigo-100" },
+  image: { label: "صورة", Icon: ImageIcon, color: "text-emerald-500", bg: "bg-emerald-50", border: "border-emerald-100" },
+  pdf: { label: "PDF", Icon: FileArchive, color: "text-orange-500", bg: "bg-orange-50", border: "border-orange-100" },
 };
 
 // ── empty states ──────────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ function LoadingState() {
       </div>
       <div className="w-full max-w-md space-y-3 mt-2">
         {[80, 60, 70].map((w, i) => (
-          <div key={i} className="h-3 rounded-full bg-slate-100 animate-pulse"
+          <div key={i} className="h-3 rounded-full bg-slate-200 animate-pulse"
             style={{ width: `${w}%`, marginInline: "auto" }} />
         ))}
       </div>
@@ -158,8 +158,8 @@ function SubLectureCard({ sub, lectureId, index }) {
 // ── main page ─────────────────────────────────────────────────────────────────
 export default function LectureDetailsPage() {
   const [lecture, setLecture] = useState(null);
-  const [status, setStatus]   = useState("loading");
-  const lectureId             = useParams().lectureId;
+  const [status, setStatus] = useState("loading");
+  const lectureId = useParams().lectureId;
 
   async function getLectureDetails() {
     setStatus("loading");
@@ -179,9 +179,9 @@ export default function LectureDetailsPage() {
 
   useEffect(() => { getLectureDetails(); }, []);
 
-  if (status === "loading")   return <div className="p-6"><LoadingState /></div>;
+  if (status === "loading") return <div className="p-6"><LoadingState /></div>;
   if (status === "not-found") return <div className="p-6"><NotFoundState /></div>;
-  if (status === "error")     return <div className="p-6"><ErrorState onRetry={getLectureDetails} /></div>;
+  if (status === "error") return <div className="p-6"><ErrorState onRetry={getLectureDetails} /></div>;
 
   const subLectures = lecture?.subLectures ?? [];
 

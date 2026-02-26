@@ -14,9 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useAlert } from "@/components/providers/alert-provider";
 import Link from "next/link";
 
 export default function AdminStudentsPage() {
+    const { showAlert, showConfirm } = useAlert();
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -43,31 +45,33 @@ export default function AdminStudentsPage() {
 
     const handleBanToggle = async (student) => {
         const action = student.isBanned ? "رفع الحظر عن" : "حظر";
-        if (!confirm(`${action} ${student.name}؟`)) return;
-        setUpdatingId(student.id);
-        try {
-            await updateDoc(doc(db, "users", student.id), { isBanned: !student.isBanned });
-            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, isBanned: !s.isBanned } : s));
-        } finally {
-            setUpdatingId(null);
-        }
+        showConfirm(`${action} ${student.name}؟`, async () => {
+            setUpdatingId(student.id);
+            try {
+                await updateDoc(doc(db, "users", student.id), { isBanned: !student.isBanned });
+                setStudents(prev => prev.map(s => s.id === student.id ? { ...s, isBanned: !s.isBanned } : s));
+            } finally {
+                setUpdatingId(null);
+            }
+        });
     };
 
     const handlePromoteToggle = async (student) => {
         if (student.id === auth.currentUser?.uid) {
-            return alert("لا يمكنك إزالة صلاحيات المشرف عن نفسك!");
+            return showAlert("لا يمكنك إزالة صلاحيات المشرف عن نفسك!", "تنبيه أمني", "error");
         }
         const isAdmin = student.role === "admin";
         const action = isAdmin ? "إزالة صلاحيات المشرف من" : "ترقية";
-        if (!confirm(`${action} ${student.name} إلى ${isAdmin ? "طالب" : "مشرف"}؟`)) return;
-        setUpdatingId(student.id);
-        try {
-            const newRole = isAdmin ? "student" : "admin";
-            await updateDoc(doc(db, "users", student.id), { role: newRole });
-            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, role: newRole } : s));
-        } finally {
-            setUpdatingId(null);
-        }
+        showConfirm(`${action} ${student.name} إلى ${isAdmin ? "طالب" : "مشرف"}؟`, async () => {
+            setUpdatingId(student.id);
+            try {
+                const newRole = isAdmin ? "student" : "admin";
+                await updateDoc(doc(db, "users", student.id), { role: newRole });
+                setStudents(prev => prev.map(s => s.id === student.id ? { ...s, role: newRole } : s));
+            } finally {
+                setUpdatingId(null);
+            }
+        });
     };
 
     const filtered = students.filter(s => {

@@ -16,8 +16,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAlert } from "@/components/providers/alert-provider";
 
 export default function StartQuizPage({ params }) {
+    const { showAlert } = useAlert();
     const { id } = use(params);
     const router = useRouter();
     const { user, userData, loading: authLoading } = useAuth();
@@ -80,7 +82,7 @@ export default function StartQuizPage({ params }) {
             }
         } catch (err) {
             console.error("Submission error:", err);
-            if (!isAuto) alert("حدث خطأ أثناء حفظ الإجابات");
+            if (!isAuto) showAlert("حدث خطأ أثناء حفظ الإجابات", "فشل التسليم", "error");
         } finally {
             setSubmitting(false);
         }

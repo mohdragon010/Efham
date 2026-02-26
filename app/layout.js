@@ -18,6 +18,8 @@ export const metadata = {
   description: "منصة أفهم التعليمية",
 };
 
+import { AlertProvider } from "@/components/providers/alert-provider";
+
 export default function RootLayout({ children }) {
   return (
     <html lang="ar" dir="rtl" className="light">
@@ -25,7 +27,9 @@ export default function RootLayout({ children }) {
         suppressHydrationWarning
         className={`${inter.variable} ${ibmPlexArabic.variable} font-sans antialiased bg-slate-50/50 text-slate-900`}
       >
-        {children}
+        <AlertProvider>
+          {children}
+        </AlertProvider>
       </body>
     </html>
   );

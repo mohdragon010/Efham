@@ -122,36 +122,32 @@ export default function Navbar() {
                 </div>
             </div>
 
-            {/* Mobile Bottom Bar */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 flex justify-around items-center z-50">
-                {navItems.slice(0, isAdmin ? 4 : 5).map((item) => {
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-slate-200 px-4 py-3 flex justify-around items-center z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.04)]">
+                {navItems.slice(0, 4).map((item) => {
                     const isActive = pathname === item.href || (item.href !== "/study-content" && pathname.startsWith(item.href));
                     return (
                         <Link
                             key={item.href}
                             href={item.href}
                             className={cn(
-                                "flex flex-col items-center gap-0.5 transition-colors px-2 py-1 rounded-xl",
-                                isActive ? "text-primary bg-primary/5" : "text-slate-400"
+                                "flex flex-col items-center gap-1 transition-all px-3 py-1.5 rounded-2xl relative",
+                                isActive ? "text-primary bg-primary/5" : "text-slate-400 hover:text-slate-600"
                             )}
                         >
-                            <item.icon className={cn("w-5 h-5", isActive ? "stroke-[2.5px]" : "stroke-[1.5px]")} />
-                            <span className="text-[9px] font-bold">{item.label}</span>
+                            <item.icon className={cn("w-5.5 h-5.5", isActive ? "stroke-[2.5px]" : "stroke-[1.5px]")} />
+                            <span className="text-[10px] font-black">{item.label}</span>
                         </Link>
                     );
                 })}
-                {isAdmin && (
-                    <Link
-                        href="/admin"
-                        className={cn(
-                            "flex flex-col items-center gap-0.5 transition-colors px-2 py-1 rounded-xl",
-                            pathname.startsWith("/admin") ? "text-violet-600 bg-violet-50" : "text-slate-400"
-                        )}
-                    >
-                        <LayoutDashboard className="w-5 h-5" />
-                        <span className="text-[9px] font-bold">التحكم</span>
-                    </Link>
-                )}
+
+                {/* Mobile Logout Button */}
+                <button
+                    onClick={logout}
+                    className="flex flex-col items-center gap-1 transition-all px-3 py-1.5 rounded-2xl text-slate-400 active:text-red-500 active:bg-red-50"
+                >
+                    <LogOut className="w-5.5 h-5.5 stroke-[1.5px]" />
+                    <span className="text-[10px] font-black">خروج</span>
+                </button>
             </div>
         </nav>
     );

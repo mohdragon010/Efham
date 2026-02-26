@@ -28,7 +28,7 @@ function LoadingState() {
       </div>
       <div className="w-full max-w-md space-y-3 mt-2">
         {[80, 60, 70].map((w, i) => (
-          <div key={i} className="h-3 rounded-full bg-slate-100 animate-pulse"
+          <div key={i} className="h-3 rounded-full bg-slate-200 animate-pulse"
             style={{ width: `${w}%`, marginInline: "auto" }} />
         ))}
       </div>

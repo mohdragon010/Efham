@@ -14,9 +14,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useAlert } from "@/components/providers/alert-provider";
 
 // ── Assignment Form Modal ──────────────────────────────────────────────────────
 function AssignmentModal({ assignment, onClose, onSaved }) {
+    const { showAlert } = useAlert();
     const isEdit = !!assignment;
     const [form, setForm] = useState({
         title: assignment?.title || "",
@@ -70,7 +72,7 @@ function AssignmentModal({ assignment, onClose, onSaved }) {
 
     const removeOption = (qIdx, optIdx) => {
         const q = { ...form.questions[qIdx] };
-        if (q.options.length <= 2) return alert("يجب أن يحتوي السؤال على خيارين على الأقل");
+        if (q.options.length <= 2) return showAlert("يجب أن يحتوي السؤال على خيارين على الأقل", "تنبيه", "warning");
 
         const newOptions = q.options.filter((_, idx) => idx !== optIdx);
         let newCorrectIndex = q.correctIndex;
@@ -93,12 +95,12 @@ function AssignmentModal({ assignment, onClose, onSaved }) {
     };
 
     const handleSave = async () => {
-        if (!form.title.trim()) return alert("أدخل عنوان الواجب");
-        if (form.questions.length === 0) return alert("يجب إضافة سؤال واحد على الأقل");
+        if (!form.title.trim()) return showAlert("أدخل عنوان الواجب", "حقل مطلوب", "warning");
+        if (form.questions.length === 0) return showAlert("يجب إضافة سؤال واحد على الأقل", "تنبيه", "warning");
         for (const q of form.questions) {
-            if (!q.text.trim()) return alert("أدخل نص السؤال");
-            if (q.options.some(o => !o.trim())) return alert("أكمل جميع الخيارات");
-            if (!q.correct.trim()) return alert("اختر الإجابة الصحيحة لكل سؤال");
+            if (!q.text.trim()) return showAlert("أدخل نص السؤال", "تنبيه", "warning");
+            if (q.options.some(o => !o.trim())) return showAlert("أكمل جميع الخيارات", "تنبيه", "warning");
+            if (!q.correct.trim()) return showAlert("اختر الإجابة الصحيحة لكل سؤال", "تنبيه", "warning");
         }
         setSaving(true);
         try {
@@ -119,7 +121,7 @@ function AssignmentModal({ assignment, onClose, onSaved }) {
             onSaved();
             onClose();
         } catch (e) {
-            alert("فشل الحفظ: " + e.message);
+            showAlert("فشل الحفظ: " + e.message, "خطأ", "error");
         } finally {
             setSaving(false);
         }
@@ -398,6 +400,7 @@ function AssignmentRow({ assignment, onEdit, onDelete, onToggle }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AdminAssignmentsPage() {
+    const { showConfirm } = useAlert();
     const [assignments, setAssignments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modal, setModal] = useState(null);
@@ -417,9 +420,10 @@ export default function AdminAssignmentsPage() {
     }, []);
 
     const handleDelete = async (id) => {
-        if (!confirm("حذف هذا الواجب نهائياً؟")) return;
-        await deleteDoc(doc(db, "assignments", id));
-        setAssignments(prev => prev.filter(a => a.id !== id));
+        showConfirm("حذف هذا الواجب نهائياً؟", async () => {
+            await deleteDoc(doc(db, "assignments", id));
+            setAssignments(prev => prev.filter(a => a.id !== id));
+        });
     };
 
     const handleToggle = async (assignment) => {
@@ -435,26 +439,26 @@ export default function AdminAssignmentsPage() {
     });
 
     return (
-        <div className="p-8 space-y-8 min-h-screen">
-            <div className="flex items-center justify-between">
+        <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 min-h-screen">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 font-outfit">إدارة الواجبات</h1>
-                    <p className="text-slate-400 text-sm font-black mt-1 tracking-tight uppercase">تصميم ورفع المهام الدراسية الآلية</p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 font-outfit">إدارة الواجبات</h1>
+                    <p className="text-slate-400 text-xs sm:text-sm font-black mt-1 tracking-tight uppercase">تصميم ورفع المهام الدراسية الآلية</p>
                 </div>
-                <Button onClick={() => setModal("add")} className="bg-slate-900 hover:bg-black text-white px-8 h-12 rounded-2xl font-black gap-2 shadow-xl shadow-slate-200 transition-all hover:scale-105">
+                <Button onClick={() => setModal("add")} className="w-full sm:w-auto bg-slate-900 hover:bg-black text-white px-8 h-12 rounded-2xl font-black gap-2 shadow-xl shadow-slate-200 transition-all hover:scale-105 active:scale-95">
                     <Plus className="w-5 h-5" /> إضافة واجب جديد
                 </Button>
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2 p-1.5 bg-white border border-slate-100 rounded-2xl w-fit shadow-sm">
-                {[{ value: "all", label: "جميع الواجبات" }, { value: "active", label: "المنشورة" }, { value: "inactive", label: "المسودة" }].map(f => (
+            <div className="flex gap-1 sm:gap-2 p-1 bg-white border border-slate-100 rounded-2xl w-fit shadow-xs overflow-x-auto max-w-full no-scrollbar">
+                {[{ value: "all", label: "الكل" }, { value: "active", label: "المنشورة" }, { value: "inactive", label: "المسودة" }].map(f => (
                     <button key={f.value} onClick={() => setFilter(f.value)}
                         className={cn(
-                            "px-6 py-2 rounded-xl text-xs font-black transition-all",
+                            "px-4 sm:px-6 py-1.5 sm:py-2 rounded-xl text-[10px] sm:text-xs font-black transition-all whitespace-nowrap",
                             filter === f.value
                                 ? "bg-slate-900 text-white shadow-lg shadow-slate-200"
-                                : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
+                                : "text-slate-400 hover:text-slate-900"
                         )}>
                         {f.label}
                     </button>
@@ -463,7 +467,7 @@ export default function AdminAssignmentsPage() {
 
             {loading ? (
                 <div className="space-y-4">
-                    {[1, 2, 3].map(i => <div key={i} className="h-32 bg-white rounded-[2rem] border border-slate-50 animate-pulse shadow-sm" />)}
+                    {[1, 2, 3].map(i => <div key={i} className="h-32 bg-slate-200 rounded-[2rem] animate-pulse" />)}
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="py-32 text-center bg-white rounded-[3rem] border border-slate-50 shadow-sm">

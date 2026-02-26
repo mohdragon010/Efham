@@ -9,10 +9,10 @@ export const metadata = {
 export default function AdminLayout({ children }) {
     return (
         <AdminGuard>
-            <div className="min-h-screen bg-slate-50 flex" dir="rtl">
+            <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row" dir="rtl">
                 <AdminSidebar />
-                {/* Main Content — offset by sidebar width */}
-                <main className="flex-1 mr-64 min-h-screen overflow-x-hidden">
+                {/* Main Content — offset by sidebar width on desktop, no offset on mobile */}
+                <main className="flex-1 md:mr-64 min-h-screen overflow-x-hidden pt-16 md:pt-0">
                     {children}
                 </main>
             </div>
