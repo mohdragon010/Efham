@@ -17,7 +17,7 @@ export const metadata = {
   title: "أفهم - منصة تعليميه",
   description: "منصة أفهم التعليمية",
   icons:{
-    icon:{icon:'/icon.png'}
+    icon:{icon:"/icon.png"}
   },
 };
 
