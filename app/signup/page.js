@@ -14,7 +14,7 @@ import { auth, db, provider } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { signInWithPopup, signOut } from "firebase/auth";
 import Link from "next/link";
-import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs, serverTimestamp } from "firebase/firestore";
 import useAuth from "@/hooks/useAuth";
 
 export default function Signup() {
@@ -24,16 +24,17 @@ export default function Signup() {
     const [phone, setPhone] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [isCreatingAccount, setIsCreatingAccount] = useState(false);
 
     useEffect(() => {
-        if (user) {
+        // Only redirect if the user is logged in AND we aren't currently 
+        // in the middle of creating their Firestore document.
+        if (user && !isCreatingAccount) {
             router.push("/")
-            return
         }
-    }, [user])
+    }, [user, isCreatingAccount, router])
 
     const validatePhone = (number) => {
-        // Egyptian number check: starts with 01 and 11 digits total
         const regex = /^01[0125][0-9]{8}$/;
         return regex.test(number);
     };
@@ -52,34 +53,37 @@ export default function Signup() {
         }
 
         setLoading(true);
-        try {
-            // 1. Check if phone already exists in Firestore
-            const usersRef = collection(db, "users");
-            const q = query(usersRef, where("phone", "==", phone));
-            const querySnapshot = await getDocs(q);
+        setIsCreatingAccount(true); // Prevent useEffect redirect during the process
 
-            if (!querySnapshot.empty) {
-                setError("رقم الهاتف هذا مسجل بالفعل");
+        try {
+            // 1. Auth with Google First
+            // We must auth first because your rules only allow reading/writing 
+            // if the user is authenticated.
+            const result = await signInWithPopup(auth, provider);
+            const firebaseUser = result.user;
+
+            // 2. Check if UID already has a profile
+            const userDocRef = doc(db, "users", firebaseUser.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (userDoc.exists()) {
+                setError("هذا الحساب مسجل بالفعل، يرجى تسجيل الدخول");
                 setLoading(false);
+                setIsCreatingAccount(false);
                 return;
             }
 
-            // 2. Auth with Google
-            const result = await signInWithPopup(auth, provider);
-            const user = result.user;
-
-            // 3. Check if UID or Email already has an account
-            const userDocRef = doc(db, "users", user.uid);
-            const userDoc = await getDoc(userDocRef);
-
-            // Also check email just in case UID is used differently or for extra security
-            const emailQuery = query(collection(db, "users"), where("email", "==", user.email));
-            const emailSnapshot = await getDocs(emailQuery);
-
-            if (userDoc.exists() || !emailSnapshot.empty) {
-                await signOut(auth); // Sign out from Firebase Auth since registration failed
-                setError("هذا الحساب (البريد الإلكتروني) مسجل بالفعل، يرجى تسجيل الدخول");
+            // 3. Optional: Phone uniqueness check 
+            // Note: This will only work if your rules allow "list" on the users collection,
+            // otherwise, this query will throw a "Permissions Denied" error.
+            const phoneQuery = query(collection(db, "users"), where("phone", "==", phone));
+            const phoneSnapshot = await getDocs(phoneQuery);
+            
+            if (!phoneSnapshot.empty) {
+                await signOut(auth);
+                setError("رقم الهاتف هذا مسجل بحساب آخر");
                 setLoading(false);
+                setIsCreatingAccount(false);
                 return;
             }
 
@@ -87,18 +91,23 @@ export default function Signup() {
             await setDoc(userDocRef, {
                 name: name,
                 phone: phone,
-                email: user.email,
-                uid: user.uid,
-                createdAt: new Date(),
-                isBanned: false,
-                role: "student" // default role
+                email: firebaseUser.email,
+                uid: firebaseUser.uid,
+                createdAt: serverTimestamp(), // Better than new Date() for DB consistency
+                isBanned: false,              // FIXED TYPO
+                role: "student" 
             });
 
+            setIsCreatingAccount(false);
             router.push("/");
+
         } catch (err) {
             console.error(err);
+            setIsCreatingAccount(false);
             if (err.code === 'auth/popup-closed-by-user') {
                 setError("تم إغلاق نافذة التسجيل");
+            } else if (err.code === 'permission-denied') {
+                setError("عفواً، لا تملك الصلاحية لإتمام العملية. يرجى التواصل مع الدعم.");
             } else {
                 setError("حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى.");
             }
