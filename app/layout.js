@@ -1,6 +1,8 @@
 import { Inter, IBM_Plex_Sans_Arabic } from "next/font/google";
 import "./globals.css";
-import AuthGuard from "@/components/authGuard";
+// If you aren't using AuthGuard in the return below, 
+// commenting it out can also prevent "undefined" errors during build.
+// import AuthGuard from "@/components/authGuard"; 
 
 const inter = Inter({
   variable: "--font-inter",
@@ -16,19 +18,22 @@ const ibmPlexArabic = IBM_Plex_Sans_Arabic({
 export const metadata = {
   title: "أفهم - منصة تعليميه",
   description: "منصة أفهم التعليمية",
-  icons:{
-    icon:{icon:"/icon.png"}
+  icons: {
+    icon: "/icon.png"
   },
 };
 
 import { AlertProvider } from "@/components/providers/alert-provider";
 
 export default function RootLayout({ children }) {
+  // Added optional chaining (?.) to font variables to prevent .toString() crashes
+  const fontClasses = `${inter?.variable || ''} ${ibmPlexArabic?.variable || ''}`;
+
   return (
     <html lang="ar" dir="rtl" className="light">
       <body
         suppressHydrationWarning
-        className={`${inter.variable} ${ibmPlexArabic.variable} font-sans antialiased bg-slate-50/50 text-slate-900`}
+        className={`${fontClasses} font-sans antialiased bg-slate-50/50 text-slate-900`}
       >
         <AlertProvider>
           {children}
@@ -37,4 +42,3 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-
