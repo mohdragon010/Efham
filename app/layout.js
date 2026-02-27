@@ -16,6 +16,9 @@ const ibmPlexArabic = IBM_Plex_Sans_Arabic({
 export const metadata = {
   title: "أفهم - منصة تعليميه",
   description: "منصة أفهم التعليمية",
+  icons:{
+    icon:{icon:'/icon.png'}
+  },
 };
 
 import { AlertProvider } from "@/components/providers/alert-provider";
