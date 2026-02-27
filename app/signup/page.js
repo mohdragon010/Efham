@@ -90,6 +90,7 @@ export default function Signup() {
                 email: user.email,
                 uid: user.uid,
                 createdAt: new Date(),
+                isBanned: flase,
                 role: "student" // default role
             });
 
