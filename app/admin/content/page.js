@@ -52,20 +52,31 @@ function ContentEntryRow({ entry, index, total, onChange, onRemove }) {
         return (match && match[2].length === 11) ? match[2] : url;
     };
 
-    const handleFileUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        setUploading(true);
-        try {
-            const isVideo = file.type.startsWith("video/");
-            const url = await uploadToCloudinary(file, isVideo ? "video" : "auto");
-            onChange({ ...entry, value: url });
-        } catch (err) {
-            showAlert("فشل رفع الملف: " + err.message, "خطأ في الرفع", "error");
-        } finally {
-            setUploading(false);
+const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploading(true);
+
+    try {
+        let resourceType = "auto";
+
+        if (file.type.startsWith("video/")) {
+            resourceType = "video";
+        } else if (file.type === "application/pdf") {
+            resourceType = "raw";
         }
-    };
+
+        const url = await uploadToCloudinary(file, resourceType);
+
+        onChange({ ...entry, value: url });
+
+    } catch (err) {
+        showAlert("فشل رفع الملف: " + err.message, "خطأ في الرفع", "error");
+    } finally {
+        setUploading(false);
+    }
+};
 
     return (
         <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col gap-4 relative group">
