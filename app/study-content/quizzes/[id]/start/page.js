@@ -118,13 +118,32 @@ export default function StartQuizPage({ params }) {
                 // Check for Active Session
                 const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
                 const sessionSnap = await getDoc(sessionRef);
+                const totalAllowed = Math.max((quizData.duration || 30), 1) * 60; // Ensure minimum 1 min
 
                 if (sessionSnap.exists()) {
                     const sessionData = sessionSnap.data();
+                    
+                    // Validate startTime exists and is a valid timestamp
+                    if (!sessionData.startTime || typeof sessionData.startTime.toDate !== 'function') {
+                        // Stale/corrupted session — delete and start fresh
+                        await deleteDoc(sessionRef).catch(() => {});
+                        const startTime = new Date();
+                        await setDoc(sessionRef, {
+                            userId: user.uid,
+                            quizId: id,
+                            startTime: startTime,
+                            answers: {},
+                            lastSync: serverTimestamp()
+                        });
+                        setTimeLeft(totalAllowed);
+                        setAnswers({});
+                        setLoading(false);
+                        return;
+                    }
+
                     const startTime = sessionData.startTime.toDate().getTime();
                     const now = Date.now();
                     const elapsedSeconds = Math.floor((now - startTime) / 1000);
-                    const totalAllowed = (quizData.duration || 30) * 60;
 
                     if (elapsedSeconds >= totalAllowed) {
                         // Time expired while away
@@ -150,7 +169,7 @@ export default function StartQuizPage({ params }) {
                         answers: {},
                         lastSync: serverTimestamp()
                     });
-                    setTimeLeft((quizData.duration || 30) * 60);
+                    setTimeLeft(totalAllowed);
                 }
             } catch (err) {
                 console.error("Initialization error:", err);
@@ -372,7 +391,14 @@ export default function StartQuizPage({ params }) {
                 <Button
                     size="lg"
                     disabled={submitting}
-                    onClick={() => handleSubmit()}
+                    onClick={() => {
+                        const answered = Object.keys(answers).length;
+                        if (answered < quiz.questions.length) {
+                            setShowModal(true);
+                        } else {
+                            handleSubmit();
+                        }
+                    }}
                     className="w-full max-w-md py-8 text-2xl font-black rounded-3xl bg-orange-500 hover:bg-orange-600 shadow-2xl shadow-orange-500/30 hover:scale-[1.02] active:scale-95 transition-all flex gap-3"
                 >
                     {submitting ? (
