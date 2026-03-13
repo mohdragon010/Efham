@@ -45,14 +45,14 @@ export default function StartQuizPage({ params }) {
         try {
             let score = 0;
             const processedAnswers = quiz.questions
-                .filter(q => q.id)
-                .map(q => {
-                    const selected = currentAnswers[q.id];
+                .map((q, i) => {
+                    const qKey = q.id || `q_${i}`;
+                    const selected = currentAnswers[qKey];
                     const correctValue = q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : null);
                     const isCorrect = selected === correctValue;
                     if (isCorrect) score += q.points || 0;
                     return {
-                        questionId: q.id || "unknown",
+                        questionId: qKey,
                         selected: selected || "لم يتم الحل",
                         isCorrect,
                         points: q.points || 0
@@ -117,8 +117,17 @@ export default function StartQuizPage({ params }) {
                     router.push("/study-content/quizzes");
                     return;
                 }
-                
-                const quizData = { id: qSnap.id, ...qSnap.data() };
+
+                // ✅ FIX: Guarantee every question has a unique id
+                const rawData = qSnap.data();
+                const quizData = {
+                    id: qSnap.id,
+                    ...rawData,
+                    questions: (rawData.questions || []).map((q, i) => ({
+                        ...q,
+                        id: q.id || `q_${i}`
+                    }))
+                };
                 setQuiz(quizData);
 
                 // Calculate total allowed time in seconds
@@ -131,10 +140,9 @@ export default function StartQuizPage({ params }) {
 
                 if (sessionSnap.exists()) {
                     const sessionData = sessionSnap.data();
-                    
+
                     // Validate startTime
                     if (!sessionData.startTime || typeof sessionData.startTime.toDate !== 'function') {
-                        // Corrupted session - restart
                         await deleteDoc(sessionRef).catch(() => {});
                         await setDoc(sessionRef, {
                             userId: user.uid,
@@ -149,14 +157,12 @@ export default function StartQuizPage({ params }) {
                         return;
                     }
 
-                    // Calculate elapsed time from server timestamp
                     const startTime = sessionData.startTime.toDate().getTime();
                     const now = Date.now();
                     const elapsedSeconds = Math.floor((now - startTime) / 1000);
                     const timeRemaining = totalAllowed - elapsedSeconds;
 
                     if (timeRemaining <= 0) {
-                        // Time expired
                         const prevAnswers = sessionData.answers || {};
                         setAnswers(prevAnswers);
                         setIsTimeUp(true);
@@ -167,12 +173,10 @@ export default function StartQuizPage({ params }) {
                         }, 100);
                         return;
                     } else {
-                        // Resume with correct time
                         setTimeLeft(timeRemaining);
                         setAnswers(sessionData.answers || {});
                     }
                 } else {
-                    // Start new session
                     await setDoc(sessionRef, {
                         userId: user.uid,
                         quizId: id,
@@ -229,13 +233,12 @@ export default function StartQuizPage({ params }) {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const handleOptionSelect = async (questionId, option) => {
+    const handleOptionSelect = async (qKey, option) => {
         if (isTimeUp || submitting) return;
 
-        const newAnswers = { ...answers, [questionId]: option };
+        const newAnswers = { ...answers, [qKey]: option };
         setAnswers(newAnswers);
 
-        // Sync to Firestore
         try {
             const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
             await setDoc(sessionRef, {
@@ -359,56 +362,61 @@ export default function StartQuizPage({ params }) {
 
             {/* Questions List */}
             <div className="space-y-12">
-                {quiz.questions.map((q, idx) => (
-                    <motion.div
-                        key={q.id || idx}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.1 }}
-                    >
-                        <Card className="border-2 border-slate-100 shadow-xl shadow-slate-200/30 rounded-[2.5rem] overflow-hidden">
-                            <div className="bg-orange-50 border-b border-orange-100 p-6 flex items-center justify-between">
-                                <span className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-black shadow-lg shadow-orange-500/20">
-                                    {idx + 1}
-                                </span>
-                                <span className="text-orange-600 font-black text-sm uppercase tracking-wider">
-                                    {q.points || 0} نقاط
-                                </span>
-                            </div>
-                            <CardContent className="p-8 md:p-10">
-                                <h3 className="text-2xl font-black text-slate-800 mb-8 leading-snug">
-                                    {q.text || "السؤال غير محدد"}
-                                </h3>
-
-                                <div className="grid gap-4">
-                                    {q.options && q.options.map((option, optIdx) => {
-                                        const isSelected = answers[q.id] === option;
-                                        return (
-                                            <button
-                                                key={optIdx}
-                                                onClick={() => handleOptionSelect(q.id, option)}
-                                                className={cn(
-                                                    "w-full p-6 py-5 rounded-2xl text-right font-bold transition-all flex items-center justify-between group border-2 relative overflow-hidden",
-                                                    isSelected
-                                                        ? "bg-orange-500 border-orange-500 text-white shadow-xl shadow-orange-500/20 translate-x-1"
-                                                        : "bg-white border-slate-100 text-slate-600 hover:border-orange-500/30 hover:bg-orange-50/20"
-                                                )}
-                                            >
-                                                <span className="relative z-10">{option}</span>
-                                                <div className={cn(
-                                                    "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all relative z-10",
-                                                    isSelected ? "bg-white border-white" : "border-slate-200 group-hover:border-orange-500"
-                                                )}>
-                                                    {isSelected && <CheckCircle2 className="w-4 h-4 text-orange-500" />}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
+                {quiz.questions.map((q, idx) => {
+                    // ✅ FIX: use guaranteed unique key (already set during init)
+                    const qKey = q.id || `q_${idx}`;
+                    return (
+                        <motion.div
+                            key={qKey}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.1 }}
+                        >
+                            <Card className="border-2 border-slate-100 shadow-xl shadow-slate-200/30 rounded-[2.5rem] overflow-hidden">
+                                <div className="bg-orange-50 border-b border-orange-100 p-6 flex items-center justify-between">
+                                    <span className="w-10 h-10 rounded-xl bg-orange-500 text-white flex items-center justify-center font-black shadow-lg shadow-orange-500/20">
+                                        {idx + 1}
+                                    </span>
+                                    <span className="text-orange-600 font-black text-sm uppercase tracking-wider">
+                                        {q.points || 0} نقاط
+                                    </span>
                                 </div>
-                            </CardContent>
-                        </Card>
-                    </motion.div>
-                ))}
+                                <CardContent className="p-8 md:p-10">
+                                    <h3 className="text-2xl font-black text-slate-800 mb-8 leading-snug">
+                                        {q.text || "السؤال غير محدد"}
+                                    </h3>
+
+                                    <div className="grid gap-4">
+                                        {q.options && q.options.map((option, optIdx) => {
+                                            // ✅ FIX: use qKey instead of q.id
+                                            const isSelected = answers[qKey] === option;
+                                            return (
+                                                <button
+                                                    key={optIdx}
+                                                    onClick={() => handleOptionSelect(qKey, option)}
+                                                    className={cn(
+                                                        "w-full p-6 py-5 rounded-2xl text-right font-bold transition-all flex items-center justify-between group border-2 relative overflow-hidden",
+                                                        isSelected
+                                                            ? "bg-orange-500 border-orange-500 text-white shadow-xl shadow-orange-500/20 translate-x-1"
+                                                            : "bg-white border-slate-100 text-slate-600 hover:border-orange-500/30 hover:bg-orange-50/20"
+                                                    )}
+                                                >
+                                                    <span className="relative z-10">{option}</span>
+                                                    <div className={cn(
+                                                        "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all relative z-10",
+                                                        isSelected ? "bg-white border-white" : "border-slate-200 group-hover:border-orange-500"
+                                                    )}>
+                                                        {isSelected && <CheckCircle2 className="w-4 h-4 text-orange-500" />}
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                    );
+                })}
             </div>
 
             {/* Submit Bar */}
