@@ -34,7 +34,7 @@ export default function StartQuizPage({ params }) {
     const [timeLeft, setTimeLeft] = useState(0);
     const [resultId, setResultId] = useState(null);
 
-    // Submission Logic (Refactored for Re-entry)
+    // Submission Logic
     const handleSubmit = async (isAuto = false, passedAnswers = null) => {
         if (submitting || resultId) return;
 
@@ -45,7 +45,7 @@ export default function StartQuizPage({ params }) {
         try {
             let score = 0;
             const processedAnswers = quiz.questions
-                .filter(q => q.id) // Skip questions without IDs
+                .filter(q => q.id)
                 .map(q => {
                     const selected = currentAnswers[q.id];
                     const correctValue = q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : null);
@@ -59,13 +59,11 @@ export default function StartQuizPage({ params }) {
                     };
                 });
 
-            // Filter to ensure no undefined values
             const wrongQuestionIds = processedAnswers
                 .filter(a => !a.isCorrect)
                 .map(a => a.questionId)
                 .filter(id => id !== undefined && id !== null);
 
-            // 1. Save Result
             const docRef = await addDoc(collection(db, "quizzesResult"), {
                 quizId: id,
                 userId: user.uid,
@@ -79,7 +77,6 @@ export default function StartQuizPage({ params }) {
                 gradedAt: serverTimestamp()
             });
 
-            // 2. Clear Session
             const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
             await deleteDoc(sessionRef).catch(e => console.error("Session cleanup error:", e));
 
@@ -96,7 +93,7 @@ export default function StartQuizPage({ params }) {
         }
     };
 
-    // 1. Combined Fetch Quiz + Session logic
+    // Initialization - Fetch Quiz + Session
     useEffect(() => {
         const initSession = async () => {
             if (authLoading || !user || !id) return;
@@ -120,29 +117,24 @@ export default function StartQuizPage({ params }) {
                     router.push("/study-content/quizzes");
                     return;
                 }
+                
                 const quizData = { id: qSnap.id, ...qSnap.data() };
                 setQuiz(quizData);
+
+                // Calculate total allowed time in seconds
+                const durationMinutes = quizData.duration ? Number(quizData.duration) : 30;
+                const totalAllowed = Math.max(durationMinutes, 1) * 60;
 
                 // Check for Active Session
                 const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
                 const sessionSnap = await getDoc(sessionRef);
-                
-                // Duration is in minutes, convert to seconds
-                const durationMinutes = quizData.duration || 30;
-                const totalAllowed = Math.max(durationMinutes, 1) * 60;
-                
-                console.log("Quiz Duration:", {
-                    durationMinutes,
-                    totalAllowed,
-                    quizDataDuration: quizData.duration
-                });
 
                 if (sessionSnap.exists()) {
                     const sessionData = sessionSnap.data();
                     
-                    // Validate startTime exists and is a valid timestamp
+                    // Validate startTime
                     if (!sessionData.startTime || typeof sessionData.startTime.toDate !== 'function') {
-                        // Stale/corrupted session — delete and start fresh
+                        // Corrupted session - restart
                         await deleteDoc(sessionRef).catch(() => {});
                         await setDoc(sessionRef, {
                             userId: user.uid,
@@ -157,34 +149,25 @@ export default function StartQuizPage({ params }) {
                         return;
                     }
 
+                    // Calculate elapsed time from server timestamp
                     const startTime = sessionData.startTime.toDate().getTime();
                     const now = Date.now();
                     const elapsedSeconds = Math.floor((now - startTime) / 1000);
                     const timeRemaining = totalAllowed - elapsedSeconds;
 
-                    console.log("Timer Debug:", {
-                        startTime: new Date(startTime),
-                        now: new Date(now),
-                        elapsedSeconds,
-                        totalAllowed,
-                        timeRemaining,
-                        quizDuration: quizData.duration
-                    });
-
                     if (timeRemaining <= 0) {
-                        // Time expired while away
+                        // Time expired
                         const prevAnswers = sessionData.answers || {};
                         setAnswers(prevAnswers);
                         setIsTimeUp(true);
-                        setLoading(false);
                         setTimeLeft(0);
-                        // Schedule auto-submit after this render completes
+                        setLoading(false);
                         setTimeout(() => {
                             handleSubmit(true, prevAnswers);
                         }, 100);
                         return;
                     } else {
-                        // Resume session with correct remaining time
+                        // Resume with correct time
                         setTimeLeft(timeRemaining);
                         setAnswers(sessionData.answers || {});
                     }
@@ -202,26 +185,29 @@ export default function StartQuizPage({ params }) {
                 }
             } catch (err) {
                 console.error("Initialization error:", err);
+                showAlert("حدث خطأ في تحميل الاختبار", "خطأ", "error");
             } finally {
                 setLoading(false);
             }
         };
 
         initSession();
-    }, [id, user, authLoading, router]);
+    }, [id, user, authLoading, router, showAlert]);
 
     // Auto-submit when time is up
     useEffect(() => {
         if (isTimeUp && !resultId && !submitting) {
             handleSubmit(true, answers);
         }
-    }, [isTimeUp, resultId, submitting]);
+    }, [isTimeUp, resultId, submitting, answers]);
+
+    // Timer countdown
     useEffect(() => {
         if (loading || isTimeUp || !quiz || submitting || resultId) return;
 
         if (timeLeft <= 0) {
             setIsTimeUp(true);
-            return; // Don't call handleSubmit here - it will be called by the modal timeout or manual trigger
+            return;
         }
 
         const timer = setInterval(() => {
@@ -375,7 +361,7 @@ export default function StartQuizPage({ params }) {
             <div className="space-y-12">
                 {quiz.questions.map((q, idx) => (
                     <motion.div
-                        key={q.id}
+                        key={q.id || idx}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: idx * 0.1 }}
@@ -386,16 +372,16 @@ export default function StartQuizPage({ params }) {
                                     {idx + 1}
                                 </span>
                                 <span className="text-orange-600 font-black text-sm uppercase tracking-wider">
-                                    {q.points} نقاط
+                                    {q.points || 0} نقاط
                                 </span>
                             </div>
                             <CardContent className="p-8 md:p-10">
                                 <h3 className="text-2xl font-black text-slate-800 mb-8 leading-snug">
-                                    {q.text}
+                                    {q.text || "السؤال غير محدد"}
                                 </h3>
 
                                 <div className="grid gap-4">
-                                    {q.options.map((option, optIdx) => {
+                                    {q.options && q.options.map((option, optIdx) => {
                                         const isSelected = answers[q.id] === option;
                                         return (
                                             <button
