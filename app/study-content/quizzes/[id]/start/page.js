@@ -135,11 +135,10 @@ export default function StartQuizPage({ params }) {
                     if (!sessionData.startTime || typeof sessionData.startTime.toDate !== 'function') {
                         // Stale/corrupted session — delete and start fresh
                         await deleteDoc(sessionRef).catch(() => {});
-                        const startTime = new Date();
                         await setDoc(sessionRef, {
                             userId: user.uid,
                             quizId: id,
-                            startTime: startTime,
+                            startTime: serverTimestamp(),
                             answers: {},
                             lastSync: serverTimestamp()
                         });
@@ -152,32 +151,36 @@ export default function StartQuizPage({ params }) {
                     const startTime = sessionData.startTime.toDate().getTime();
                     const now = Date.now();
                     const elapsedSeconds = Math.floor((now - startTime) / 1000);
+                    const timeRemaining = totalAllowed - elapsedSeconds;
 
-                    if (elapsedSeconds >= totalAllowed) {
+                    if (timeRemaining <= 0) {
                         // Time expired while away
                         const prevAnswers = sessionData.answers || {};
                         setAnswers(prevAnswers);
                         setIsTimeUp(true);
                         setLoading(false);
                         setTimeLeft(0);
-                        await handleSubmit(true, prevAnswers);
+                        // Schedule auto-submit after this render completes
+                        setTimeout(() => {
+                            handleSubmit(true, prevAnswers);
+                        }, 100);
                         return;
                     } else {
-                        // Resume session
-                        setTimeLeft(totalAllowed - elapsedSeconds);
+                        // Resume session with correct remaining time
+                        setTimeLeft(timeRemaining);
                         setAnswers(sessionData.answers || {});
                     }
                 } else {
                     // Start new session
-                    const startTime = new Date();
                     await setDoc(sessionRef, {
                         userId: user.uid,
                         quizId: id,
-                        startTime: startTime,
+                        startTime: serverTimestamp(),
                         answers: {},
                         lastSync: serverTimestamp()
                     });
                     setTimeLeft(totalAllowed);
+                    setAnswers({});
                 }
             } catch (err) {
                 console.error("Initialization error:", err);
@@ -189,22 +192,32 @@ export default function StartQuizPage({ params }) {
         initSession();
     }, [id, user, authLoading, router]);
 
-    // 2. Timer Logic
+    // Auto-submit when time is up
+    useEffect(() => {
+        if (isTimeUp && !resultId && !submitting) {
+            handleSubmit(true, answers);
+        }
+    }, [isTimeUp, resultId, submitting]);
     useEffect(() => {
         if (loading || isTimeUp || !quiz || submitting || resultId) return;
 
         if (timeLeft <= 0) {
             setIsTimeUp(true);
-            handleSubmit(true);
-            return;
+            return; // Don't call handleSubmit here - it will be called by the modal timeout or manual trigger
         }
 
         const timer = setInterval(() => {
-            setTimeLeft(prev => prev - 1);
+            setTimeLeft(prev => {
+                if (prev <= 1) {
+                    setIsTimeUp(true);
+                    return 0;
+                }
+                return prev - 1;
+            });
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [timeLeft, loading, isTimeUp, quiz, submitting, resultId]);
+    }, [loading, isTimeUp, quiz, submitting, resultId, timeLeft]);
 
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
