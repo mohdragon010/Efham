@@ -44,18 +44,26 @@ export default function StartQuizPage({ params }) {
         setSubmitting(true);
         try {
             let score = 0;
-            const processedAnswers = quiz.questions.map(q => {
-                const selected = currentAnswers[q.id];
-                const correctValue = q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : null);
-                const isCorrect = selected === correctValue;
-                if (isCorrect) score += q.points;
-                return {
-                    questionId: q.id,
-                    selected: selected || "لم يتم الحل",
-                    isCorrect,
-                    points: q.points
-                };
-            });
+            const processedAnswers = quiz.questions
+                .filter(q => q.id) // Skip questions without IDs
+                .map(q => {
+                    const selected = currentAnswers[q.id];
+                    const correctValue = q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : null);
+                    const isCorrect = selected === correctValue;
+                    if (isCorrect) score += q.points || 0;
+                    return {
+                        questionId: q.id || "unknown",
+                        selected: selected || "لم يتم الحل",
+                        isCorrect,
+                        points: q.points || 0
+                    };
+                });
+
+            // Filter to ensure no undefined values
+            const wrongQuestionIds = processedAnswers
+                .filter(a => !a.isCorrect)
+                .map(a => a.questionId)
+                .filter(id => id !== undefined && id !== null);
 
             // 1. Save Result
             const docRef = await addDoc(collection(db, "quizzesResult"), {
@@ -63,9 +71,9 @@ export default function StartQuizPage({ params }) {
                 userId: user.uid,
                 userName: userData?.name || "طالب",
                 score,
-                totalPoints: quiz.totalPoints,
+                totalPoints: quiz.totalPoints || 0,
                 answers: processedAnswers,
-                wrongQuestionIds: processedAnswers.filter(a => !a.isCorrect).map(a => a.questionId),
+                wrongQuestionIds: wrongQuestionIds,
                 status: "graded",
                 submittedAt: serverTimestamp(),
                 gradedAt: serverTimestamp()
