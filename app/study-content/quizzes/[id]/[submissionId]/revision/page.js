@@ -32,7 +32,16 @@ export default function QuizRevisionPage({ params }) {
             ]);
 
             if (qSnap.exists() && resSnap.exists()) {
-                setQuiz(qSnap.data());
+                const rawData = qSnap.data();
+                // ✅ FIX: Guarantee every question has a unique id (same logic as StartQuizPage)
+                const quizData = {
+                    ...rawData,
+                    questions: (rawData.questions || []).map((q, i) => ({
+                        ...q,
+                        id: q.id || `q_${i}`
+                    }))
+                };
+                setQuiz(quizData);
                 setResult(resSnap.data());
             }
             setLoading(false);
@@ -78,12 +87,15 @@ export default function QuizRevisionPage({ params }) {
             {/* Questions Breakdown */}
             <div className="space-y-12">
                 {quiz.questions.map((q, idx) => {
-                    const userAnswer = result.answers.find(a => a.questionId === q.id);
+                    // ✅ FIX: use same key strategy as StartQuizPage
+                    const qKey = q.id || `q_${idx}`;
+                    const userAnswer = result.answers.find(a => a.questionId === qKey);
                     const isCorrect = userAnswer?.isCorrect;
+                    const correctValue = q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : null);
 
                     return (
                         <motion.div
-                            key={q.id}
+                            key={qKey}
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.1 }}
@@ -123,9 +135,8 @@ export default function QuizRevisionPage({ params }) {
                                     </h3>
 
                                     <div className="grid gap-4">
-                                        {q.options.map((option, optIdx) => {
+                                        {(q.options || []).map((option, optIdx) => {
                                             const isChosen = userAnswer?.selected === option;
-                                            const correctValue = q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : null);
                                             const isCorrectOption = correctValue === option;
 
                                             let stateClass = "border-slate-100 bg-white text-slate-600";
@@ -152,6 +163,13 @@ export default function QuizRevisionPage({ params }) {
                                         })}
                                     </div>
 
+                                    {/* ✅ FIX: show "لم يجب" if no answer recorded */}
+                                    {!userAnswer && (
+                                        <p className="mt-6 text-sm font-bold text-slate-400 text-center">
+                                            لم يتم تسجيل إجابة لهذا السؤال
+                                        </p>
+                                    )}
+
                                     <motion.div
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: 1, y: 0 }}
@@ -177,7 +195,7 @@ export default function QuizRevisionPage({ params }) {
                                                 "font-medium text-sm leading-relaxed",
                                                 isCorrect ? "text-green-700/80" : "text-slate-500"
                                             )}>
-                                                {q.explanation || `الإجابة الصحيحة هي "${q.correct || (q.options && q.correctIndex !== undefined ? q.options[q.correctIndex] : "غير محددة")}".`}
+                                                {q.explanation || `الإجابة الصحيحة هي "${correctValue || "غير محددة"}".`}
                                             </p>
                                         </div>
                                     </motion.div>
