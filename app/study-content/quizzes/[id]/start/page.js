@@ -126,7 +126,16 @@ export default function StartQuizPage({ params }) {
                 // Check for Active Session
                 const sessionRef = doc(db, "quizSessions", `${user.uid}_${id}`);
                 const sessionSnap = await getDoc(sessionRef);
-                const totalAllowed = Math.max((quizData.duration || 30), 1) * 60; // Ensure minimum 1 min
+                
+                // Duration is in minutes, convert to seconds
+                const durationMinutes = quizData.duration || 30;
+                const totalAllowed = Math.max(durationMinutes, 1) * 60;
+                
+                console.log("Quiz Duration:", {
+                    durationMinutes,
+                    totalAllowed,
+                    quizDataDuration: quizData.duration
+                });
 
                 if (sessionSnap.exists()) {
                     const sessionData = sessionSnap.data();
@@ -152,6 +161,15 @@ export default function StartQuizPage({ params }) {
                     const now = Date.now();
                     const elapsedSeconds = Math.floor((now - startTime) / 1000);
                     const timeRemaining = totalAllowed - elapsedSeconds;
+
+                    console.log("Timer Debug:", {
+                        startTime: new Date(startTime),
+                        now: new Date(now),
+                        elapsedSeconds,
+                        totalAllowed,
+                        timeRemaining,
+                        quizDuration: quizData.duration
+                    });
 
                     if (timeRemaining <= 0) {
                         // Time expired while away
